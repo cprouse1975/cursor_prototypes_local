@@ -114,6 +114,84 @@ If `expiryDate` equals `dispatchDate`, the hauler is valid for that day (expires
 7. In EU, UI blocks expired at selection time; API blocks even if UI is bypassed.
 8. Outside EU, field hidden in UI and ticketing not blocked by license expiry.
 
+## Gherkin acceptance criteria
+
+```gherkin
+Feature: Haulier/Carrier license expiry handling in Command Cloud
+  As a dispatcher or master-data user
+  I want license expiry behavior to match Command Series V3 rules for EU operations
+  So that imported data is compatible and dispatch is blocked only when required
+
+  Background:
+    Given a tenant has a configured operating region
+    And the haulier record supports a "License Expiration Date" value as YYYY-MM-DD
+
+  Scenario: Show license expiry field in EU region
+    Given the tenant is configured as EU region
+    When a user opens Haulier/Carrier details
+    Then the "License Expiration Date" field is visible
+    And the field is optional
+
+  Scenario: Hide license expiry field outside EU region
+    Given the tenant is configured as non-EU region
+    When a user opens Haulier/Carrier details
+    Then the "License Expiration Date" field is not shown in standard UI flows
+
+  Scenario: EU dispatch allowed when license expiry is blank
+    Given the tenant is configured as EU region
+    And a haulier has no "License Expiration Date" set
+    When dispatch creates a ticket for that haulier
+    Then ticket creation is allowed
+    And no expiry validation error is returned
+
+  Scenario: EU dispatch allowed when license has not expired
+    Given the tenant is configured as EU region
+    And a haulier has "License Expiration Date" set to "2030-04-26"
+    And the dispatch local date in Europe/Dublin is "2030-04-20"
+    When dispatch creates a ticket for that haulier
+    Then ticket creation is allowed
+
+  Scenario: EU dispatch allowed on exact expiry date
+    Given the tenant is configured as EU region
+    And a haulier has "License Expiration Date" set to "2030-04-26"
+    And the dispatch local date in Europe/Dublin is "2030-04-26"
+    When dispatch creates a ticket for that haulier
+    Then ticket creation is allowed
+
+  Scenario: EU dispatch blocked when license is expired
+    Given the tenant is configured as EU region
+    And a haulier has "License Expiration Date" set to "2030-04-26"
+    And the dispatch local date in Europe/Dublin is "2030-04-27"
+    When dispatch creates a ticket for that haulier
+    Then ticket creation is blocked
+    And the error message includes "Hauler license expired on 2030-04-26"
+
+  Scenario: Non-EU dispatch not blocked by license expiry
+    Given the tenant is configured as non-EU region
+    And a haulier has "License Expiration Date" set to "2020-01-01"
+    When dispatch creates a ticket for that haulier
+    Then ticket creation is allowed
+    And no license expiry validation is enforced
+
+  Scenario: Import stores valid source value without recalculation
+    Given an inbound Command Series V3 haulier payload contains "License Expiration Date" as "2030-04-26"
+    When the record is imported
+    Then Command Cloud stores licenseExpiryDate as "2030-04-26"
+    And Command Cloud does not derive a replacement date by adding 5 years
+
+  Scenario: Import accepts blank source value
+    Given an inbound Command Series V3 haulier payload has blank "License Expiration Date"
+    When the record is imported
+    Then Command Cloud stores licenseExpiryDate as null or blank
+    And the record remains import-successful
+
+  Scenario: Import flags malformed source value
+    Given an inbound Command Series V3 haulier payload contains malformed "License Expiration Date"
+    When the record is imported
+    Then the import logs a field-level validation error for "License Expiration Date"
+    And the malformed value is not silently coerced
+```
+
 ## Implementation note
 
 The 5-year renewal cycle is operational context, not a calculation rule for runtime enforcement. Runtime compliance must always be based on the explicit stored expiration date.

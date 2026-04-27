@@ -42,8 +42,8 @@ Use one canonical field for compatibility with Series imports:
 
 2. **Missing/blank date from source**
    - Keep record importable.
-   - Treat as non-compliant (`missing`) only when `isEuRegion = true`.
-   - In EU region, block ticketing until a valid date is present.
+   - Store as null/blank when source is blank.
+   - In EU region, blank is allowed and does not block ticketing.
 
 3. **Invalid format from source**
    - Reject/flag the field for correction in import logs.
@@ -53,7 +53,7 @@ Use one canonical field for compatibility with Series imports:
    - Latest non-null imported value replaces prior value.
    - Optionally persist audit metadata (source, import batch ID, changed-at) to support compliance tracing.
 
-## Ticketing enforcement rule (EU only; must match Series compliance intent)
+## Ticketing enforcement rule (EU only)
 
 Dispatch must be blocked from ticketing when the selected Hauler/Carrier is not compliant **and** `isEuRegion = true`.
 
@@ -66,18 +66,16 @@ Given:
 
 Status:
 - `not_applicable` if `isEuRegion = false`
-- `missing` if `expiryDate` is null
+- `not_set` if `expiryDate` is null
 - `expired` if `expiryDate < dispatchDate`
 - `active` if `expiryDate >= dispatchDate`
 
 ### Dispatch behavior
 
-- If status is `not_applicable`, allow ticket creation/edit.
-- If `isEuRegion = true`, allow ticket creation/edit only when status is `active`.
-- If `isEuRegion = true`, block when status is `missing` or `expired`.
+- If status is `not_applicable` or `not_set`, allow ticket creation/edit.
+- If `isEuRegion = true`, block only when status is `expired`.
 - Show a clear validation message, for example:
   - `Hauler license expired on 2024-11-30. Ticketing is not permitted.`
-  - `Hauler license expiry date is missing. Ticketing is not permitted.`
 
 ### Boundary condition
 
@@ -87,12 +85,12 @@ If `expiryDate` equals `dispatchDate`, the hauler is valid for that day (expires
 
 - Label: `License Expiration Date`
 - Show only when `isEuRegion = true`.
-- Required for active dispatch usage in EU (even if temporarily optional at data-entry level during migration).
+- Optional field (not mandatory/default-required) in EU.
 - Display warning states:
   - Expired
   - Expiring soon (optional threshold e.g., 30/60/90 days)
-  - Missing
-- In EU, prevent selecting non-compliant haulers in dispatch UI (disable or filter), and also enforce server-side validation.
+  - Not set (informational only; non-blocking)
+- In EU, prevent selecting expired haulers in dispatch UI (disable or filter), and also enforce server-side validation.
 - Outside EU, this field can remain hidden and non-blocking.
 
 ## Suggested API payload example
@@ -108,12 +106,12 @@ If `expiryDate` equals `dispatchDate`, the hauler is valid for that day (expires
 ## Test scenarios (minimum)
 
 1. Import with valid date -> date stored exactly.
-2. Import with blank date -> record imported; in EU ticketing blocked.
+2. Import with blank date -> record imported; in EU ticketing allowed.
 3. EU ticket on date before expiry -> allowed.
 4. EU ticket on exact expiry date -> allowed.
 5. EU ticket day after expiry -> blocked.
-6. Ticket with malformed imported date -> import error + blocked in EU until corrected.
-7. In EU, UI blocks expired/missing at selection time; API blocks even if UI is bypassed.
+6. Ticket with malformed imported date -> import error logged; value not set/updated until corrected.
+7. In EU, UI blocks expired at selection time; API blocks even if UI is bypassed.
 8. Outside EU, field hidden in UI and ticketing not blocked by license expiry.
 
 ## Implementation note

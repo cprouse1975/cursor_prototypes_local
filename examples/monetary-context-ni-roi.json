@@ -1,0 +1,30 @@
+{
+  "transactionCurrency": "GBP",
+  "functionalCurrency": "GBP",
+  "presentationCurrency": "EUR",
+  "amount": { "value": 10000.0, "currency": "GBP" },
+  "functionalAmount": { "value": 10000.0, "currency": "GBP" },
+  "presentationAmount": { "value": 11682.0, "currency": "EUR" },
+  "exchangeRate": 1.1682,
+  "exchangeRateSource": "ECB_DAILY",
+  "exchangeRateDate": "2026-06-30",
+  "exchangeRateLockedAt": "2026-06-30T14:30:00Z",
+  "legalEntityId": "ni-legal-entity-004",
+  "dispatchLocationId": "ni-plant-derry-012",
+  "taxJurisdiction": {
+    "sellerCountry": "GB-NI",
+    "buyerCountry": "IE",
+    "deliveryCountry": "IE",
+    "dispatchOriginCountry": "GB-NI",
+    "supplyType": "GOODS",
+    "vatTreatment": "WINDSOR_INTRA_EU_GOODS",
+    "sellerVatPrefix": "XI",
+    "sellerVatId": "XI123456789",
+    "buyerVatId": "IE1234567T",
+    "windsorFramework": true,
+    "corridorPack": "UK_IRELAND_WINDSOR",
+    "resolvedBy": "TAX_JURISDICTION_SERVICE",
+    "resolvedAt": "2026-06-30T10:00:00Z",
+    "legacyTaxCode": "IE-INTRA-EU"
+  }
+}

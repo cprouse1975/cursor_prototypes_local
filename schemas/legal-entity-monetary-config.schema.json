@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://commandalkon.com/schemas/command-cloud/legal-entity-monetary-config.json",
+  "title": "LegalEntityMonetaryConfig",
+  "description": "Legal entity monetary and tax identity (replaces CS V3 company code sprawl).",
+  "type": "object",
+  "required": ["legalEntityId", "functionalCurrency", "legalEntityCountry"],
+  "additionalProperties": false,
+  "properties": {
+    "legalEntityId": { "type": "string" },
+    "name": { "type": "string" },
+    "functionalCurrency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "legalEntityCountry": {
+      "type": "string",
+      "description": "FR, DE, GB, GB-NI, IE, etc."
+    },
+    "vatRegistration": {
+      "type": "object",
+      "required": ["country", "number"],
+      "properties": {
+        "country": { "type": "string" },
+        "number": { "type": "string" },
+        "prefix": {
+          "type": ["string", "null"],
+          "description": "XI for Northern Ireland EU trade."
+        }
+      }
+    },
+    "legacyCompanyCode": {
+      "type": ["string", "null"],
+      "description": "CS V3 import reference; not shown in Cloud UI."
+    },
+    "timezone": {
+      "type": "string",
+      "default": "Europe/Dublin",
+      "description": "Compliance calendar for EU/IE operations."
+    }
+  }
+}

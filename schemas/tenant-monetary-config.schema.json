@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://commandalkon.com/schemas/command-cloud/tenant-monetary-config.json",
+  "title": "TenantMonetaryConfig",
+  "description": "Simplified tenant-level monetary and regional configuration (MVP admin setup).",
+  "type": "object",
+  "required": [
+    "operatingRegion",
+    "enabledCurrencies",
+    "defaultFxSource",
+    "defaultLocale"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "operatingRegion": {
+      "type": "string",
+      "enum": ["EU", "UK", "UK-NI", "NA", "APAC", "OTHER"]
+    },
+    "enabledCurrencies": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Z]{3}$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "defaultFxSource": {
+      "type": "string",
+      "enum": ["ECB_DAILY", "BOE_DAILY", "ERP_FEED", "NONE"]
+    },
+    "defaultLocale": {
+      "type": "string",
+      "description": "BCP 47 locale e.g. en-IE, fr-FR, de-DE."
+    },
+    "corridorPacks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["EU_CONTINENTAL", "UK_IRELAND_WINDSOR", "UK_EXPORT"]
+      },
+      "uniqueItems": true
+    },
+    "isEuRegion": {
+      "type": "boolean",
+      "default": false
+    },
+    "windsorFrameworkEligible": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

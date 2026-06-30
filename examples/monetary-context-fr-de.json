@@ -1,0 +1,28 @@
+{
+  "transactionCurrency": "EUR",
+  "functionalCurrency": "EUR",
+  "presentationCurrency": null,
+  "amount": { "value": 7950.0, "currency": "EUR" },
+  "functionalAmount": { "value": 7950.0, "currency": "EUR" },
+  "presentationAmount": null,
+  "exchangeRate": null,
+  "exchangeRateSource": null,
+  "exchangeRateDate": null,
+  "exchangeRateLockedAt": null,
+  "legalEntityId": "fr-legal-entity-001",
+  "dispatchLocationId": "fr-plant-border-801",
+  "taxJurisdiction": {
+    "sellerCountry": "FR",
+    "buyerCountry": "DE",
+    "deliveryCountry": "DE",
+    "supplyType": "GOODS",
+    "vatTreatment": "INTRA_EU_B2B_REVERSE_CHARGE",
+    "sellerVatId": "FR12345678901",
+    "buyerVatId": "DE123456789",
+    "windsorFramework": false,
+    "corridorPack": "EU_CONTINENTAL",
+    "resolvedBy": "TAX_JURISDICTION_SERVICE",
+    "resolvedAt": "2026-06-30T10:00:00Z",
+    "legacyTaxCode": null
+  }
+}

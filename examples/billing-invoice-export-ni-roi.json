@@ -1,0 +1,104 @@
+{
+  "invoiceId": "inv-2026-001234",
+  "invoiceNumber": "INV-001234",
+  "invoiceDate": "2026-06-30",
+  "customerId": "cust-roi-5678",
+  "legalEntityId": "ni-legal-entity-004",
+  "monetaryContext": {
+    "transactionCurrency": "GBP",
+    "functionalCurrency": "GBP",
+    "presentationCurrency": "EUR",
+    "amount": { "value": 10000.0, "currency": "GBP" },
+    "functionalAmount": { "value": 10000.0, "currency": "GBP" },
+    "presentationAmount": { "value": 11682.0, "currency": "EUR" },
+    "exchangeRate": 1.1682,
+    "exchangeRateSource": "ECB_DAILY",
+    "exchangeRateDate": "2026-06-30",
+    "exchangeRateLockedAt": "2026-06-28T09:15:00Z",
+    "legalEntityId": "ni-legal-entity-004",
+    "dispatchLocationId": "ni-plant-derry-012",
+    "taxJurisdiction": {
+      "sellerCountry": "GB-NI",
+      "buyerCountry": "IE",
+      "deliveryCountry": "IE",
+      "supplyType": "GOODS",
+      "vatTreatment": "WINDSOR_INTRA_EU_GOODS",
+      "sellerVatPrefix": "XI",
+      "sellerVatId": "XI123456789",
+      "buyerVatId": "IE1234567T",
+      "windsorFramework": true,
+      "corridorPack": "UK_IRELAND_WINDSOR",
+      "resolvedBy": "TAX_JURISDICTION_SERVICE",
+      "resolvedAt": "2026-06-28T09:10:00Z",
+      "legacyTaxCode": "IE-INTRA-EU"
+    }
+  },
+  "lines": [
+    {
+      "lineId": "line-1",
+      "description": "Ready mix concrete 40N",
+      "quantity": 10,
+      "unitPrice": { "value": 79.5, "currency": "GBP" },
+      "lineTotal": { "value": 795.0, "currency": "GBP" },
+      "monetaryContext": {
+        "transactionCurrency": "GBP",
+        "functionalCurrency": "GBP",
+        "amount": { "value": 795.0, "currency": "GBP" },
+        "functionalAmount": { "value": 795.0, "currency": "GBP" },
+        "exchangeRate": 1.1682,
+        "exchangeRateSource": "ECB_DAILY",
+        "exchangeRateDate": "2026-06-30",
+        "exchangeRateLockedAt": "2026-06-28T09:15:00Z",
+        "legalEntityId": "ni-legal-entity-004",
+        "dispatchLocationId": "ni-plant-derry-012",
+        "taxJurisdiction": {
+          "sellerCountry": "GB-NI",
+          "buyerCountry": "IE",
+          "deliveryCountry": "IE",
+          "supplyType": "GOODS",
+          "vatTreatment": "WINDSOR_INTRA_EU_GOODS",
+          "windsorFramework": true,
+          "corridorPack": "UK_IRELAND_WINDSOR",
+          "resolvedBy": "TAX_JURISDICTION_SERVICE",
+          "resolvedAt": "2026-06-28T09:10:00Z"
+        }
+      }
+    }
+  ],
+  "taxSummary": {
+    "netTotal": { "value": 10000.0, "currency": "GBP" },
+    "taxTotal": { "value": 0.0, "currency": "GBP" },
+    "grossTotal": { "value": 10000.0, "currency": "GBP" },
+    "functionalNetTotal": { "value": 10000.0, "currency": "GBP" },
+    "vatBreakdown": [
+      {
+        "vatTreatment": "WINDSOR_INTRA_EU_GOODS",
+        "rate": 0,
+        "amount": { "value": 0.0, "currency": "GBP" }
+      }
+    ]
+  },
+  "compliance": {
+    "taxJurisdiction": {
+      "sellerCountry": "GB-NI",
+      "buyerCountry": "IE",
+      "deliveryCountry": "IE",
+      "supplyType": "GOODS",
+      "vatTreatment": "WINDSOR_INTRA_EU_GOODS",
+      "windsorFramework": true,
+      "corridorPack": "UK_IRELAND_WINDSOR",
+      "resolvedBy": "TAX_JURISDICTION_SERVICE"
+    },
+    "eInvoicingFormat": "PEPPOL_BIS_3",
+    "eInvoicingEndpoint": "0088:123456789",
+    "legacyTaxCode": "IE-INTRA-EU"
+  },
+  "erpHandoff": {
+    "functionalCurrency": "GBP",
+    "transactionCurrency": "GBP",
+    "exchangeRate": 1.1682,
+    "exchangeRateDate": "2026-06-30",
+    "exchangeRateSource": "ECB_DAILY",
+    "accountingCategoryCode": "4000"
+  }
+}

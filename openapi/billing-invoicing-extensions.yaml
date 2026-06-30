@@ -1,0 +1,187 @@
+openapi: 3.1.0
+info:
+  title: Command Cloud Billing & Invoicing API Extensions
+  description: Multi-currency monetary context extensions for cross-border operations (MVP).
+  version: 2026-06-30
+
+paths:
+  /api/v1/invoices/{invoiceId}:
+    get:
+      summary: Get invoice with monetary context
+      operationId: getInvoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: X-Tenant-Id
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice with mandatory monetaryContext
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingInvoiceExport"
+
+  /api/v1/invoices/{invoiceId}/export:
+    get:
+      summary: Export invoice for ERP with FX metadata
+      operationId: exportInvoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ERP-ready export payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingInvoiceExport"
+
+  /api/v1/invoices/{invoiceId}/e-invoice:
+    post:
+      summary: Submit invoice to e-invoicing access point
+      operationId: submitEInvoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Submission accepted
+
+components:
+  schemas:
+    MonetaryAmount:
+      type: object
+      required: [value, currency]
+      properties:
+        value:
+          type: number
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+
+    TaxJurisdiction:
+      type: object
+      required: [sellerCountry, buyerCountry, deliveryCountry, supplyType, vatTreatment, resolvedBy]
+      properties:
+        sellerCountry:
+          type: string
+        buyerCountry:
+          type: string
+        deliveryCountry:
+          type: string
+        supplyType:
+          type: string
+          enum: [GOODS, SERVICES, MIXED]
+        vatTreatment:
+          type: string
+        sellerVatPrefix:
+          type: string
+          nullable: true
+        windsorFramework:
+          type: boolean
+        corridorPack:
+          type: string
+          nullable: true
+        resolvedBy:
+          type: string
+          const: TAX_JURISDICTION_SERVICE
+        legacyTaxCode:
+          type: string
+          nullable: true
+
+    MonetaryContext:
+      type: object
+      required:
+        - transactionCurrency
+        - functionalCurrency
+        - amount
+        - functionalAmount
+        - taxJurisdiction
+        - legalEntityId
+        - dispatchLocationId
+      properties:
+        transactionCurrency:
+          type: string
+        functionalCurrency:
+          type: string
+        presentationCurrency:
+          type: string
+          nullable: true
+        amount:
+          $ref: "#/components/schemas/MonetaryAmount"
+        functionalAmount:
+          $ref: "#/components/schemas/MonetaryAmount"
+        presentationAmount:
+          $ref: "#/components/schemas/MonetaryAmount"
+          nullable: true
+        exchangeRate:
+          type: number
+          nullable: true
+        exchangeRateSource:
+          type: string
+          nullable: true
+        exchangeRateDate:
+          type: string
+          format: date
+          nullable: true
+        exchangeRateLockedAt:
+          type: string
+          format: date-time
+          nullable: true
+        legalEntityId:
+          type: string
+        dispatchLocationId:
+          type: string
+        taxJurisdiction:
+          $ref: "#/components/schemas/TaxJurisdiction"
+
+    BillingInvoiceExport:
+      type: object
+      required: [invoiceId, invoiceNumber, invoiceDate, monetaryContext, lines, taxSummary, compliance]
+      properties:
+        invoiceId:
+          type: string
+        invoiceNumber:
+          type: string
+        invoiceDate:
+          type: string
+          format: date
+        monetaryContext:
+          $ref: "#/components/schemas/MonetaryContext"
+        lines:
+          type: array
+          items:
+            type: object
+            required: [lineId, description, quantity, unitPrice, lineTotal, monetaryContext]
+            properties:
+              lineId:
+                type: string
+              description:
+                type: string
+              quantity:
+                type: number
+              unitPrice:
+                $ref: "#/components/schemas/MonetaryAmount"
+              lineTotal:
+                $ref: "#/components/schemas/MonetaryAmount"
+              monetaryContext:
+                $ref: "#/components/schemas/MonetaryContext"
+        taxSummary:
+          type: object
+        compliance:
+          type: object
+        erpHandoff:
+          type: object

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://commandalkon.com/schemas/command-cloud/monetary-context.json",
+  "title": "MonetaryContext",
+  "description": "Mandatory monetary context on quote, order, ticket line, and invoice line records (MVP foundation).",
+  "type": "object",
+  "required": [
+    "transactionCurrency",
+    "functionalCurrency",
+    "amount",
+    "functionalAmount",
+    "taxJurisdiction"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "transactionCurrency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "functionalCurrency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "presentationCurrency": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{3}$"
+    },
+    "amount": {
+      "$ref": "monetary-amount.schema.json"
+    },
+    "functionalAmount": {
+      "$ref": "monetary-amount.schema.json"
+    },
+    "presentationAmount": {
+      "oneOf": [{ "$ref": "monetary-amount.schema.json" }, { "type": "null" }]
+    },
+    "exchangeRate": {
+      "type": ["number", "null"],
+      "description": "Rate to convert transaction to presentation/functional when currencies differ."
+    },
+    "exchangeRateSource": {
+      "type": ["string", "null"],
+      "enum": ["ECB_DAILY", "BOE_DAILY", "CONTRACT_FIXED", "MANUAL_OVERRIDE", null]
+    },
+    "exchangeRateDate": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "exchangeRateLockedAt": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Set at quote acceptance when rate is locked."
+    },
+    "legalEntityId": {
+      "type": "string"
+    },
+    "dispatchLocationId": {
+      "type": "string"
+    },
+    "taxJurisdiction": {
+      "$ref": "tax-jurisdiction.schema.json"
+    }
+  }
+}

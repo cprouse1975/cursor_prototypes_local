@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://commandalkon.com/schemas/command-cloud/tax-jurisdiction.json",
+  "title": "TaxJurisdiction",
+  "description": "Resolved tax jurisdiction for a quote-to-cash transaction.",
+  "type": "object",
+  "required": [
+    "sellerCountry",
+    "buyerCountry",
+    "deliveryCountry",
+    "supplyType",
+    "vatTreatment",
+    "resolvedBy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sellerCountry": {
+      "type": "string",
+      "description": "ISO country or extension code: FR, DE, GB, GB-NI, IE."
+    },
+    "buyerCountry": {
+      "type": "string"
+    },
+    "deliveryCountry": {
+      "type": "string"
+    },
+    "dispatchOriginCountry": {
+      "type": "string",
+      "description": "Country of dispatch plant; required when different from seller."
+    },
+    "supplyType": {
+      "type": "string",
+      "enum": ["GOODS", "SERVICES", "MIXED"]
+    },
+    "vatTreatment": {
+      "type": "string",
+      "enum": [
+        "DOMESTIC_STANDARD",
+        "INTRA_EU_B2B_ZERO_RATED",
+        "INTRA_EU_B2B_REVERSE_CHARGE",
+        "EXPORT_ZERO_RATED",
+        "UK_DOMESTIC",
+        "WINDSOR_INTRA_EU_GOODS",
+        "NOT_APPLICABLE"
+      ]
+    },
+    "sellerVatPrefix": {
+      "type": ["string", "null"],
+      "description": "VAT prefix e.g. XI for Northern Ireland EU trade."
+    },
+    "buyerVatId": {
+      "type": ["string", "null"]
+    },
+    "sellerVatId": {
+      "type": ["string", "null"]
+    },
+    "windsorFramework": {
+      "type": "boolean",
+      "default": false
+    },
+    "corridorPack": {
+      "type": ["string", "null"],
+      "enum": ["EU_CONTINENTAL", "UK_IRELAND_WINDSOR", "UK_EXPORT", null]
+    },
+    "resolvedBy": {
+      "type": "string",
+      "const": "TAX_JURISDICTION_SERVICE"
+    },
+    "resolvedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "legacyTaxCode": {
+      "type": ["string", "null"],
+      "description": "CS V3 import audit reference only."
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://commandalkon.com/schemas/command-cloud/billing-invoice-export.json",
+  "title": "BillingInvoiceExport",
+  "description": "Billing & Invoicing API export payload with mandatory multi-currency context (MVP).",
+  "type": "object",
+  "required": [
+    "invoiceId",
+    "invoiceNumber",
+    "invoiceDate",
+    "monetaryContext",
+    "lines",
+    "taxSummary",
+    "compliance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "invoiceId": { "type": "string" },
+    "invoiceNumber": { "type": "string" },
+    "invoiceDate": { "type": "string", "format": "date" },
+    "customerId": { "type": "string" },
+    "legalEntityId": { "type": "string" },
+    "monetaryContext": {
+      "$ref": "monetary-context.schema.json"
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["lineId", "description", "quantity", "unitPrice", "lineTotal", "monetaryContext"],
+        "properties": {
+          "lineId": { "type": "string" },
+          "description": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unitPrice": { "$ref": "monetary-amount.schema.json" },
+          "lineTotal": { "$ref": "monetary-amount.schema.json" },
+          "monetaryContext": { "$ref": "monetary-context.schema.json" }
+        }
+      }
+    },
+    "taxSummary": {
+      "type": "object",
+      "required": ["netTotal", "taxTotal", "grossTotal"],
+      "properties": {
+        "netTotal": { "$ref": "monetary-amount.schema.json" },
+        "taxTotal": { "$ref": "monetary-amount.schema.json" },
+        "grossTotal": { "$ref": "monetary-amount.schema.json" },
+        "functionalNetTotal": { "$ref": "monetary-amount.schema.json" },
+        "vatBreakdown": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "vatTreatment": { "type": "string" },
+              "rate": { "type": "number" },
+              "amount": { "$ref": "monetary-amount.schema.json" }
+            }
+          }
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "properties": {
+        "taxJurisdiction": { "$ref": "tax-jurisdiction.schema.json" },
+        "eInvoicingFormat": {
+          "type": ["string", "null"],
+          "enum": ["PEPPOL_BIS_3", "FACTUR_X", "XRECHUNG", "ZUGFERRD", null]
+        },
+        "eInvoicingEndpoint": { "type": ["string", "null"] },
+        "legacyTaxCode": { "type": ["string", "null"] }
+      }
+    },
+    "erpHandoff": {
+      "type": "object",
+      "properties": {
+        "functionalCurrency": { "type": "string" },
+        "transactionCurrency": { "type": "string" },
+        "exchangeRate": { "type": ["number", "null"] },
+        "exchangeRateDate": { "type": ["string", "null"], "format": "date" },
+        "exchangeRateSource": { "type": ["string", "null"] },
+        "accountingCategoryCode": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

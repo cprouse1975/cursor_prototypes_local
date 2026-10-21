@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Trackit & Deliveries — Printed Ticket Fallback (Prototype)</title>
+<style>
+  :root {
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e6ee;
+    --border-strong: #cfd6e4;
+    --text: #0f1a2a;
+    --text-muted: #5b6a82;
+    --text-faint: #8794ab;
+    --brand: #0a52c7;
+    --brand-dark: #083f99;
+    --brand-tint: #e8f0ff;
+    --accent: #0b7a3b;
+    --warn-bg: #fff6e6;
+    --warn-border: #f3c25a;
+    --warn-text: #7a4f00;
+    --danger-bg: #fdecec;
+    --danger-border: #e5a2a2;
+    --danger-text: #8a1a1a;
+    --ok-bg: #e7f6ec;
+    --ok-border: #a5d4b6;
+    --ok-text: #0b5b2a;
+    --radius: 8px;
+    --shadow-sm: 0 1px 2px rgba(15, 26, 42, 0.06);
+    --shadow-md: 0 6px 20px rgba(15, 26, 42, 0.08);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+  button { font-family: inherit; cursor: pointer; }
+  a { color: var(--brand); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* App shell */
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  .sidebar {
+    background: #0f1a2a; color: #d7deeb; padding: 18px 14px; position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; border-bottom: 1px solid #1f2d44; margin-bottom: 10px; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, #4b8bff, #0a52c7); display: grid; place-items: center; color: white; font-weight: 700; font-size: 13px; }
+  .brand-text { font-weight: 600; color: #fff; letter-spacing: 0.2px; }
+  .brand-text small { display: block; color: #8794ab; font-weight: 500; font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .nav-section { color: #6c7a93; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; padding: 14px 10px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; color: #cdd5e4; font-size: 13px; cursor: pointer; }
+  .nav-item:hover { background: #1a2740; color: #fff; }
+  .nav-item.active { background: #1a2740; color: #fff; box-shadow: inset 2px 0 0 var(--brand); }
+  .nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: #46a76e; }
+  .nav-footer { margin-top: auto; padding: 10px; border-top: 1px solid #1f2d44; color: #8794ab; font-size: 12px; }
+
+  /* Main */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .crumbs { color: var(--text-muted); font-size: 13px; }
+  .crumbs span.sep { color: var(--text-faint); margin: 0 6px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .env-pill { font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: #fff4e0; color: #8a5a00; border: 1px solid #f3c25a; }
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #4b8bff, #0a52c7); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+
+  .content { padding: 24px; max-width: 1240px; width: 100%; }
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+  .page-head h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.2px; }
+  .page-head p { margin: 0; color: var(--text-muted); font-size: 13px; max-width: 70ch; }
+  .page-actions { display: flex; gap: 8px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+  .tab { padding: 10px 14px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 13px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .btn.primary:hover { background: var(--brand-dark); }
+  .btn.danger { background: #c93434; color: #fff; border-color: #c93434; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--brand); }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+  .card + .card { margin-top: 16px; }
+  .card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .card-head h2 { margin: 0; font-size: 15px; }
+  .card-head p { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
+  .card-body { padding: 18px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 980px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* Toggles & inputs */
+  .field { display: block; margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .field input[type=text], .field input[type=number], .field select, .field textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff;
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .toggle-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+  .toggle-row + .toggle-row { margin-top: 10px; }
+  .toggle-row h3 { margin: 0 0 4px; font-size: 14px; }
+  .toggle-row p { margin: 0; font-size: 12px; color: var(--text-muted); max-width: 60ch; }
+  .switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #cbd3e1; border-radius: 999px; cursor: pointer; transition: 0.15s; }
+  .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .switch input:checked + .slider { background: var(--brand); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+
+  .radio-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .radio-chip { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 999px; cursor: pointer; background: #fff; font-size: 13px; }
+  .radio-chip input { accent-color: var(--brand); }
+  .radio-chip.active { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-dark); font-weight: 600; }
+
+  /* Tables */
+  table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.data th, table.data td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.data th { font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; background: var(--surface-2); }
+  table.data tbody tr:hover { background: var(--surface-2); }
+
+  /* Status pills */
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; border: 1px solid transparent; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok-text); border-color: var(--ok-border); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-border); }
+  .pill.danger { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+  .pill.neutral { background: #eef2f8; color: #45526b; border-color: #d8dfea; }
+  .pill.brand { background: var(--brand-tint); color: var(--brand-dark); border-color: #b9d1f6; }
+
+  /* Banners */
+  .banner { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 8px; border: 1px solid; margin-bottom: 16px; font-size: 13px; }
+  .banner.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .banner.danger { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger-text); }
+  .banner.ok { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-text); }
+  .banner .b-icon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.6); font-size: 13px; flex-shrink: 0; }
+  .banner strong { display: block; margin-bottom: 2px; }
+  .banner .b-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* Plant cards */
+  .plant-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .plant-card { border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 8px; }
+  .plant-card.disabled { opacity: 0.55; }
+  .plant-card .plant-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .plant-card .plant-name { font-weight: 600; font-size: 14px; }
+  .plant-card .plant-meta { font-size: 12px; color: var(--text-muted); }
+  .plant-card .plant-stats { display: flex; gap: 10px; font-size: 12px; color: var(--text-muted); }
+
+  /* Scenario (plant floor) view */
+  .scenario-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .scenario-grid { grid-template-columns: 1fr; } }
+
+  .status-tile { padding: 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); display: flex; align-items: center; gap: 12px; }
+  .status-tile .st-ico { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-size: 16px; }
+  .status-tile .st-ico.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .status-tile .st-ico.warn { background: var(--warn-bg); color: var(--warn-text); }
+  .status-tile .st-ico.danger { background: var(--danger-bg); color: var(--danger-text); }
+  .status-tile .st-ico.brand { background: var(--brand-tint); color: var(--brand-dark); }
+  .status-tile h4 { margin: 0; font-size: 13px; }
+  .status-tile p { margin: 1px 0 0; font-size: 12px; color: var(--text-muted); }
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .status-grid { grid-template-columns: 1fr; } }
+
+  /* Printable ticket */
+  .ticket-wrap { background: #e9edf3; padding: 18px; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; }
+  .ticket {
+    width: 100%; max-width: 420px; background: #fff; padding: 18px 20px; border-radius: 4px; box-shadow: 0 10px 24px rgba(15,26,42,0.12), 0 2px 6px rgba(15,26,42,0.08);
+    font-family: var(--mono); color: #111; font-size: 12px;
+  }
+  .ticket .t-head { text-align: center; border-bottom: 1px dashed #999; padding-bottom: 10px; margin-bottom: 10px; }
+  .ticket .t-head h3 { margin: 0; font-size: 15px; letter-spacing: 2px; }
+  .ticket .t-head .t-sub { font-size: 10px; letter-spacing: 1px; color: #555; text-transform: uppercase; }
+  .ticket .t-row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .ticket .t-row span:first-child { color: #555; }
+  .ticket .t-section { border-top: 1px dashed #999; margin-top: 8px; padding-top: 8px; }
+  .ticket .t-big { font-size: 18px; letter-spacing: 2px; text-align: center; padding: 6px 0; border: 1px dashed #333; margin: 8px 0; font-weight: 700; }
+  .ticket .t-foot { text-align: center; font-size: 10px; color: #555; border-top: 1px dashed #999; padding-top: 8px; margin-top: 8px; letter-spacing: 1px; }
+  .ticket .sig { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; font-size: 10px; color: #333; }
+  .ticket .sig div { flex: 1; border-top: 1px solid #333; padding-top: 4px; text-align: center; }
+  .ticket .t-watermark { position: relative; }
+  .ticket.offline::after {
+    content: "MANUAL / OFFLINE"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-18deg);
+    color: rgba(201, 52, 52, 0.14); font-size: 42px; font-weight: 800; letter-spacing: 4px; pointer-events: none; white-space: nowrap;
+  }
+  .ticket { position: relative; overflow: hidden; }
+
+  /* Sync queue */
+  .queue-row td { font-family: var(--mono); font-size: 12px; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(15,26,42,0.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: #fff; border-radius: 10px; width: min(560px, 92vw); box-shadow: var(--shadow-md); overflow: hidden; }
+  .modal-head { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { margin: 0; font-size: 15px; }
+  .modal-body { padding: 18px; max-height: 70vh; overflow: auto; }
+  .modal-foot { padding: 12px 18px; background: var(--surface-2); border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .close-x { background: transparent; border: 0; font-size: 20px; line-height: 1; color: var(--text-muted); cursor: pointer; }
+
+  /* Toasts */
+  .toasts { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 200; }
+  .toast { background: #0f1a2a; color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 13px; box-shadow: var(--shadow-md); animation: slideIn 0.2s ease-out; max-width: 340px; }
+  .toast.ok { background: #0b5b2a; }
+  .toast.warn { background: #7a4f00; }
+  @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* View visibility */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Print styles for the printable ticket */
+  @media print {
+    body * { visibility: hidden !important; }
+    #print-area, #print-area * { visibility: visible !important; }
+    #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; background: #fff; border: 0; }
+    .ticket { box-shadow: none !important; max-width: 100% !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">T</div>
+      <div class="brand-text">Trackit<small>Deliveries</small></div>
+    </div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" data-view="dispatch">
+      <span>▦</span><span>Dispatch Board</span>
+    </div>
+    <div class="nav-item active" data-view="plant">
+      <span>⚙</span><span>Batch Plant</span>
+      <span class="dot" title="Live"></span>
+    </div>
+    <div class="nav-item" data-view="sync">
+      <span>⟳</span><span>Sync Queue</span>
+      <span id="nav-sync-badge" class="pill neutral" style="margin-left:auto; padding: 1px 7px; font-size: 10px;">0</span>
+    </div>
+    <div class="nav-section">Setup</div>
+    <div class="nav-item" data-view="config">
+      <span>❖</span><span>Company Config</span>
+    </div>
+    <div class="nav-item" data-view="plants">
+      <span>▣</span><span>Plants</span>
+    </div>
+    <div class="nav-footer">
+      v0.1 · Prototype<br/>
+      Printed Ticket Fallback
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="crumbs">
+          <span>Acme Ready-Mix</span><span class="sep">/</span>
+          <span id="crumb-view">Batch Plant</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="env-pill">Prototype</span>
+        <span id="global-status" class="pill ok"><span class="dot"></span> Network: Online</span>
+        <button class="btn sm" id="simulate-outage">Simulate Outage</button>
+        <div class="user-chip"><div class="avatar">CP</div>C. Prouse</div>
+      </div>
+    </header>
+
+    <!-- =============================== -->
+    <!-- VIEW: Company Config            -->
+    <!-- =============================== -->
+    <section class="content view" id="view-config">
+      <div class="page-head">
+        <div>
+          <h1>Company Configuration — Delivery Tickets</h1>
+          <p>Control how delivery tickets are issued across the business. The <strong>Printed Ticket Fallback</strong> lets dispatch or plant supervisors switch to manually printed tickets when the network, carrier signal, or Deliveries service is unavailable.</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn">Cancel</button>
+          <button class="btn primary" onclick="toast('Company configuration saved', 'ok')">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab">General</div>
+        <div class="tab">Pricing</div>
+        <div class="tab active">Ticketing</div>
+        <div class="tab">Integrations</div>
+        <div class="tab">Users</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Printed Ticket Fallback</h2>
+            <p>Primary company-wide switch. When enabled, selected plants may print physical tickets to hand to the driver instead of waiting on the digital workflow.</p>
+          </div>
+          <span id="feature-pill" class="pill neutral"><span class="dot"></span> Feature off</span>
+        </div>
+        <div class="card-body">
+          <div class="toggle-row">
+            <div>
+              <h3>Enable Printed Ticket Fallback</h3>
+              <p>Allows authorised users to switch one or more plants into manual (printed) ticketing. Required before any plant-level override will take effect.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="cfg-feature-enabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div id="feature-sub" style="opacity: 0.55; pointer-events: none; margin-top: 18px;">
+            <div class="field">
+              <label>Scope</label>
+              <div class="radio-row" id="scope-row">
+                <label class="radio-chip active" data-scope="company"><input type="radio" name="scope" value="company" checked> All plants (company-wide)</label>
+                <label class="radio-chip" data-scope="plant"><input type="radio" name="scope" value="plant"> Selected plants only</label>
+                <label class="radio-chip" data-scope="supervisor"><input type="radio" name="scope" value="supervisor"> Allow plant supervisor to toggle on-site</label>
+              </div>
+              <div class="hint">Supervisor mode lets the batchman flip the switch locally during an outage without waiting on dispatch.</div>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label>Ticket Number Series (Manual)</label>
+                <input type="text" value="M-{yyyy}{mm}-{seq:0000}" />
+                <div class="hint">Printed tickets use a distinct prefix so they can be reconciled when the system is back online. Default: <code>M-</code>.</div>
+              </div>
+              <div class="field">
+                <label>Starting Sequence Number</label>
+                <input type="number" value="1" min="1" />
+                <div class="hint">Reserve a block of numbers per plant to avoid collisions.</div>
+              </div>
+              <div class="field">
+                <label>Signature Capture</label>
+                <select>
+                  <option>Driver signs on ticket (physical)</option>
+                  <option>Customer signs on ticket (physical)</option>
+                  <option>Both</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Printer</label>
+                <select>
+                  <option>Plant default (per-plant setting)</option>
+                  <option>Office printer</option>
+                  <option>Ruggedised plant printer</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="toggle-row">
+              <div>
+                <h3>Require re-entry when network returns</h3>
+                <p>Each manual ticket appears in the Sync Queue so a user confirms, matches it to an order and records the final delivery into Deliveries.</p>
+              </div>
+              <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <h3>Auto-exit fallback when network restored</h3>
+                <p>Automatically switch plants back to digital ticketing once the Deliveries heartbeat is healthy for 10 minutes.</p>
+              </div>
+              <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <h3>Audit log all transitions</h3>
+                <p>Record who toggled fallback on/off, at which plant, and why. Visible in the Sync Queue and Admin audit log.</p>
+              </div>
+              <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Who can enable fallback?</h2>
+            <p>Only these roles will see the switch at the plant.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid-3">
+            <label class="toggle-row"><div><h3>Dispatcher</h3><p>Can toggle fallback for any plant.</p></div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></label>
+            <label class="toggle-row"><div><h3>Plant Supervisor</h3><p>Can toggle fallback for their own plant.</p></div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></label>
+            <label class="toggle-row"><div><h3>Batchman</h3><p>Can print tickets but not toggle fallback.</p></div><label class="switch"><input type="checkbox"><span class="slider"></span></label></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============================== -->
+    <!-- VIEW: Plants selection          -->
+    <!-- =============================== -->
+    <section class="content view" id="view-plants">
+      <div class="page-head">
+        <div>
+          <h1>Plants</h1>
+          <p>Choose which plants are allowed to switch to printed (manual) tickets. Only applies when the company-wide feature is enabled.</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn" onclick="setAllPlants(false)">Clear All</button>
+          <button class="btn" onclick="setAllPlants(true)">Allow All</button>
+          <button class="btn primary" onclick="toast('Plant settings saved', 'ok')">Save</button>
+        </div>
+      </div>
+
+      <div class="banner warn" id="plants-feature-off-banner">
+        <div class="b-icon">!</div>
+        <div><strong>Feature is currently off company-wide.</strong>Enable “Printed Ticket Fallback” under Company Config → Ticketing to activate these settings.</div>
+        <div class="b-actions"><button class="btn sm" onclick="go('config')">Open Company Config</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><h2>Fallback-eligible Plants</h2><p id="plants-summary">0 of 0 plants selected</p></div>
+          <div class="legend">
+            <span><span class="dot" style="background: var(--brand);"></span> Allowed</span>
+            <span><span class="dot" style="background: #cbd3e1;"></span> Not allowed</span>
+            <span><span class="dot" style="background: var(--warn-border);"></span> Currently in fallback</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="plant-list" id="plants-list"><!-- rendered --></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============================== -->
+    <!-- VIEW: Batch Plant (operator)    -->
+    <!-- =============================== -->
+    <section class="content view active" id="view-plant">
+      <div class="page-head">
+        <div>
+          <h1 id="plant-header-name">North Plant — Operator Console</h1>
+          <p>What the batchman sees. The fallback banner only appears when the company feature is on, this plant is eligible, and fallback is active (manually or auto-triggered by a dropped Deliveries heartbeat).</p>
+        </div>
+        <div class="page-actions">
+          <select id="plant-picker" class="btn" style="padding: 7px 10px;"></select>
+          <button class="btn" id="plant-toggle-fallback">Enter Fallback Mode</button>
+        </div>
+      </div>
+
+      <!-- Banners -->
+      <div id="banner-outage" class="banner danger" style="display:none;">
+        <div class="b-icon">⚠</div>
+        <div>
+          <strong>Deliveries service unreachable (3 min 42 s).</strong>
+          Digital ticket upload is paused. Printed Ticket Fallback is available at this plant.
+        </div>
+        <div class="b-actions"><button class="btn sm primary" id="banner-enter-fallback">Enter Fallback Mode</button></div>
+      </div>
+      <div id="banner-fallback" class="banner warn" style="display:none;">
+        <div class="b-icon">🖨</div>
+        <div>
+          <strong>Printed Ticket Fallback is ACTIVE at this plant.</strong>
+          Tickets will be generated with prefix <code>M-</code>, printed, and queued for sync when connectivity returns.
+        </div>
+        <div class="b-actions">
+          <button class="btn sm" id="banner-exit-fallback">Return to Digital</button>
+        </div>
+      </div>
+
+      <div class="status-grid">
+        <div class="status-tile">
+          <div id="st-net-ico" class="st-ico ok">◉</div>
+          <div><h4 id="st-net-title">Network: Online</h4><p id="st-net-sub">Deliveries heartbeat healthy</p></div>
+        </div>
+        <div class="status-tile">
+          <div id="st-mode-ico" class="st-ico brand">📡</div>
+          <div><h4 id="st-mode-title">Ticket mode: Digital</h4><p id="st-mode-sub">Tickets upload automatically to Deliveries</p></div>
+        </div>
+        <div class="status-tile">
+          <div class="st-ico brand">🖨</div>
+          <div><h4>Printer: Zebra ZT411 (plant office)</h4><p id="st-print-sub">Last test: 2 hours ago · Ready</p></div>
+        </div>
+        <div class="status-tile">
+          <div class="st-ico brand">⟳</div>
+          <div><h4>Sync Queue</h4><p id="st-sync-sub">0 manual tickets awaiting reconciliation</p></div>
+        </div>
+      </div>
+
+      <div class="scenario-grid">
+        <!-- Load Builder -->
+        <div class="card">
+          <div class="card-head">
+            <div><h2>Next Load</h2><p>Build the ticket for the driver on the scale.</p></div>
+            <span id="load-mode-pill" class="pill brand"><span class="dot"></span> Digital</span>
+          </div>
+          <div class="card-body">
+            <div class="grid-2">
+              <div class="field">
+                <label>Order #</label>
+                <input type="text" value="SO-10428" />
+              </div>
+              <div class="field">
+                <label>Customer</label>
+                <input type="text" value="Harbour Construction Ltd" />
+              </div>
+              <div class="field">
+                <label>Project</label>
+                <input type="text" value="Riverside Tower — Pour 14" />
+              </div>
+              <div class="field">
+                <label>Delivery Address</label>
+                <input type="text" value="14 Wharf St, Auckland" />
+              </div>
+              <div class="field">
+                <label>Mix / Product</label>
+                <select>
+                  <option>25 MPa Standard</option>
+                  <option selected>30 MPa Pump</option>
+                  <option>40 MPa HES</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Qty (m³)</label>
+                <input type="number" value="7.5" step="0.1" />
+              </div>
+              <div class="field">
+                <label>Truck</label>
+                <select><option>T-204</option><option selected>T-311</option><option>T-418</option></select>
+              </div>
+              <div class="field">
+                <label>Driver</label>
+                <select><option>Hemi R.</option><option selected>Sione F.</option><option>Jess M.</option></select>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content: flex-end; margin-top: 6px;">
+              <button class="btn" id="btn-dispatch-digital">Dispatch (Digital)</button>
+              <button class="btn primary" id="btn-dispatch-manual" style="display:none;">Print &amp; Hand to Driver</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="card">
+          <div class="card-head">
+            <div><h2>Ticket Preview</h2><p id="preview-sub">Preview of the digital ticket that will be sent to Deliveries.</p></div>
+            <button class="btn sm" id="btn-print-preview">Print Preview</button>
+          </div>
+          <div class="card-body">
+            <div id="print-area" class="ticket-wrap">
+              <div class="ticket" id="ticket">
+                <div class="t-head">
+                  <h3>ACME READY-MIX</h3>
+                  <div class="t-sub" id="t-plant">North Plant · 12 Industry Rd</div>
+                </div>
+
+                <div class="t-row"><span>Ticket #</span><span id="t-number">10428-A</span></div>
+                <div class="t-row"><span>Issued</span><span id="t-issued">—</span></div>
+                <div class="t-row"><span>Order</span><span id="t-order">SO-10428</span></div>
+
+                <div class="t-section">
+                  <div class="t-row"><span>Customer</span><span>Harbour Construction</span></div>
+                  <div class="t-row"><span>Project</span><span>Riverside — Pour 14</span></div>
+                  <div class="t-row"><span>Address</span><span>14 Wharf St</span></div>
+                </div>
+
+                <div class="t-section">
+                  <div class="t-row"><span>Mix</span><span>30 MPa Pump</span></div>
+                  <div class="t-row"><span>Qty (m³)</span><span>7.50</span></div>
+                  <div class="t-row"><span>Truck</span><span>T-311</span></div>
+                  <div class="t-row"><span>Driver</span><span>Sione F.</span></div>
+                </div>
+
+                <div class="t-big" id="t-mode-stamp">DIGITAL</div>
+
+                <div class="sig">
+                  <div>Driver signature</div>
+                  <div>Customer signature</div>
+                </div>
+
+                <div class="t-foot" id="t-foot">UPLOADED TO DELIVERIES · acme-rm.trackit</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============================== -->
+    <!-- VIEW: Sync Queue                -->
+    <!-- =============================== -->
+    <section class="content view" id="view-sync">
+      <div class="page-head">
+        <div>
+          <h1>Sync Queue — Manual Tickets</h1>
+          <p>Printed tickets generated during fallback are listed here. Review each one, match it to the order, and finalise into Deliveries once the network is restored.</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn" onclick="toast('Export started')">Export CSV</button>
+          <button class="btn primary" id="btn-sync-all">Reconcile All</button>
+        </div>
+      </div>
+
+      <div class="banner ok" id="banner-sync-ok" style="display:none;">
+        <div class="b-icon">✓</div>
+        <div><strong>Network restored.</strong>You can now reconcile manual tickets into Deliveries.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div><h2 id="sync-count-title">0 tickets pending reconciliation</h2><p>Grouped by plant. Oldest first.</p></div>
+          <div class="legend">
+            <span><span class="dot" style="background: var(--warn-border);"></span> Pending</span>
+            <span><span class="dot" style="background: var(--ok-border);"></span> Reconciled</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Ticket #</th>
+                <th>Plant</th>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Mix</th>
+                <th>Qty</th>
+                <th>Printed at</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="sync-tbody">
+              <tr><td colspan="9" style="text-align:center; padding: 28px; color: var(--text-muted);">No manual tickets yet. Enter fallback mode and print a ticket to see it here.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============================== -->
+    <!-- VIEW: Dispatch Board (stub)     -->
+    <!-- =============================== -->
+    <section class="content view" id="view-dispatch">
+      <div class="page-head">
+        <div>
+          <h1>Dispatch Board</h1>
+          <p>Fleet-wide view (prototype stub). The relevant fallback workflow lives in <a href="#" onclick="go('plant'); return false;">Batch Plant</a> and <a href="#" onclick="go('sync'); return false;">Sync Queue</a>.</p>
+        </div>
+      </div>
+      <div class="card"><div class="card-body" style="color: var(--text-muted); text-align: center; padding: 60px;">Dispatch board is out of scope for this prototype.</div></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Reconcile Modal -->
+<div class="modal-backdrop" id="reconcile-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>Reconcile Manual Ticket</h3><button class="close-x" onclick="closeModal()">×</button></div>
+    <div class="modal-body" id="reconcile-body"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" id="reconcile-confirm">Confirm &amp; Upload to Deliveries</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+  /* -----------------------------
+     State
+     ----------------------------- */
+  const state = {
+    view: "plant",
+    network: "online",         // online | offline
+    featureEnabled: false,
+    scope: "company",          // company | plant | supervisor
+    plants: [
+      { id: "north",   name: "North Plant",   loc: "12 Industry Rd",     allowed: true,  fallback: false, loadsToday: 42 },
+      { id: "south",   name: "South Plant",   loc: "4 Rangi Ave",        allowed: true,  fallback: false, loadsToday: 31 },
+      { id: "east",    name: "East Plant",    loc: "8 Harbour Pkwy",     allowed: false, fallback: false, loadsToday: 18 },
+      { id: "central", name: "Central Depot", loc: "Yard 2, Dockside",   allowed: true,  fallback: false, loadsToday: 9  },
+      { id: "west",    name: "West Plant",    loc: "22 Quarry Rd",       allowed: false, fallback: false, loadsToday: 24 },
+    ],
+    currentPlant: "north",
+    seq: 1,
+    tickets: [],  // {num, plant, order, customer, mix, qty, printedAt, status}
+  };
+
+  /* -----------------------------
+     Routing / view switching
+     ----------------------------- */
+  function go(view) {
+    state.view = view;
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById("view-" + view).classList.add("active");
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.view === view));
+    const titles = { dispatch: "Dispatch Board", plant: "Batch Plant", sync: "Sync Queue", config: "Company Config", plants: "Plants" };
+    document.getElementById("crumb-view").textContent = titles[view] || view;
+    render();
+  }
+  document.querySelectorAll(".nav-item").forEach(n => n.addEventListener("click", () => go(n.dataset.view)));
+
+  /* -----------------------------
+     Rendering
+     ----------------------------- */
+  function render() {
+    renderGlobalStatus();
+    renderConfig();
+    renderPlants();
+    renderPlantView();
+    renderSync();
+  }
+
+  function renderGlobalStatus() {
+    const pill = document.getElementById("global-status");
+    if (state.network === "online") {
+      pill.className = "pill ok";
+      pill.innerHTML = '<span class="dot"></span> Network: Online';
+      document.getElementById("simulate-outage").textContent = "Simulate Outage";
+    } else {
+      pill.className = "pill danger";
+      pill.innerHTML = '<span class="dot"></span> Network: OFFLINE';
+      document.getElementById("simulate-outage").textContent = "Restore Network";
+    }
+  }
+
+  function renderConfig() {
+    const cb = document.getElementById("cfg-feature-enabled");
+    cb.checked = state.featureEnabled;
+    const sub = document.getElementById("feature-sub");
+    sub.style.opacity = state.featureEnabled ? "1" : "0.55";
+    sub.style.pointerEvents = state.featureEnabled ? "auto" : "none";
+    const pill = document.getElementById("feature-pill");
+    if (state.featureEnabled) {
+      pill.className = "pill ok"; pill.innerHTML = '<span class="dot"></span> Feature on';
+    } else {
+      pill.className = "pill neutral"; pill.innerHTML = '<span class="dot"></span> Feature off';
+    }
+    document.querySelectorAll("#scope-row .radio-chip").forEach(c => {
+      const active = c.dataset.scope === state.scope;
+      c.classList.toggle("active", active);
+      c.querySelector("input").checked = active;
+    });
+  }
+
+  function renderPlants() {
+    document.getElementById("plants-feature-off-banner").style.display = state.featureEnabled ? "none" : "flex";
+    const list = document.getElementById("plants-list");
+    list.innerHTML = state.plants.map(p => `
+      <div class="plant-card ${state.featureEnabled ? "" : "disabled"}">
+        <div class="plant-head">
+          <div>
+            <div class="plant-name">${p.name}</div>
+            <div class="plant-meta">${p.loc}</div>
+          </div>
+          <label class="switch"><input type="checkbox" ${p.allowed ? "checked" : ""} onchange="togglePlantAllowed('${p.id}', this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="plant-stats">
+          <span>${p.loadsToday} loads today</span>
+          <span>·</span>
+          <span>${p.allowed ? "Allowed" : "Not allowed"}</span>
+        </div>
+        ${p.fallback ? '<span class="pill warn"><span class="dot"></span> In Fallback</span>' : ""}
+      </div>
+    `).join("");
+    const selected = state.plants.filter(p => p.allowed).length;
+    document.getElementById("plants-summary").textContent = `${selected} of ${state.plants.length} plants allowed`;
+  }
+
+  function togglePlantAllowed(id, v) {
+    const p = state.plants.find(x => x.id === id);
+    if (p) { p.allowed = v; if (!v) p.fallback = false; }
+    renderPlants(); renderPlantView();
+  }
+  function setAllPlants(v) { state.plants.forEach(p => { p.allowed = v; if (!v) p.fallback = false; }); renderPlants(); renderPlantView(); }
+
+  function currentPlant() { return state.plants.find(p => p.id === state.currentPlant); }
+
+  function renderPlantView() {
+    const picker = document.getElementById("plant-picker");
+    picker.innerHTML = state.plants.map(p => `<option value="${p.id}" ${p.id === state.currentPlant ? "selected" : ""}>${p.name}</option>`).join("");
+    picker.onchange = (e) => { state.currentPlant = e.target.value; renderPlantView(); };
+
+    const p = currentPlant();
+    document.getElementById("plant-header-name").textContent = `${p.name} — Operator Console`;
+    document.getElementById("t-plant").textContent = `${p.name} · ${p.loc}`;
+
+    const canFallback = state.featureEnabled && p.allowed;
+    const inFallback = p.fallback;
+
+    document.getElementById("banner-outage").style.display =
+      (state.network === "offline" && canFallback && !inFallback) ? "flex" : "none";
+    document.getElementById("banner-fallback").style.display = inFallback ? "flex" : "none";
+
+    const netIco = document.getElementById("st-net-ico");
+    const netTitle = document.getElementById("st-net-title");
+    const netSub = document.getElementById("st-net-sub");
+    if (state.network === "online") {
+      netIco.className = "st-ico ok"; netIco.textContent = "◉";
+      netTitle.textContent = "Network: Online"; netSub.textContent = "Deliveries heartbeat healthy";
+    } else {
+      netIco.className = "st-ico danger"; netIco.textContent = "⚠";
+      netTitle.textContent = "Network: OFFLINE"; netSub.textContent = "Deliveries unreachable · last seen 3 min ago";
+    }
+
+    const modeIco = document.getElementById("st-mode-ico");
+    const modeTitle = document.getElementById("st-mode-title");
+    const modeSub = document.getElementById("st-mode-sub");
+    const modePill = document.getElementById("load-mode-pill");
+    const previewSub = document.getElementById("preview-sub");
+    const tMode = document.getElementById("t-mode-stamp");
+    const tFoot = document.getElementById("t-foot");
+    const ticket = document.getElementById("ticket");
+
+    if (inFallback) {
+      modeIco.className = "st-ico warn"; modeIco.textContent = "🖨";
+      modeTitle.textContent = "Ticket mode: PRINTED (Manual)";
+      modeSub.textContent = "Tickets print on paper and queue for sync";
+      modePill.className = "pill warn"; modePill.innerHTML = '<span class="dot"></span> Printed · Manual';
+      previewSub.textContent = "Preview of the printed ticket the driver will carry.";
+      tMode.textContent = "MANUAL TICKET";
+      tFoot.textContent = "PENDING UPLOAD · RECONCILE IN TRACKIT";
+      ticket.classList.add("offline");
+      document.getElementById("btn-dispatch-digital").style.display = "none";
+      document.getElementById("btn-dispatch-manual").style.display = "inline-flex";
+    } else {
+      modeIco.className = "st-ico brand"; modeIco.textContent = "📡";
+      modeTitle.textContent = "Ticket mode: Digital";
+      modeSub.textContent = "Tickets upload automatically to Deliveries";
+      modePill.className = "pill brand"; modePill.innerHTML = '<span class="dot"></span> Digital';
+      previewSub.textContent = "Preview of the digital ticket that will be sent to Deliveries.";
+      tMode.textContent = "DIGITAL";
+      tFoot.textContent = "UPLOADED TO DELIVERIES · acme-rm.trackit";
+      ticket.classList.remove("offline");
+      document.getElementById("btn-dispatch-digital").style.display = "inline-flex";
+      document.getElementById("btn-dispatch-manual").style.display = "none";
+    }
+
+    const toggleBtn = document.getElementById("plant-toggle-fallback");
+    toggleBtn.disabled = !canFallback;
+    toggleBtn.textContent = inFallback ? "Return to Digital" : "Enter Fallback Mode";
+    toggleBtn.title = canFallback ? "" : "Enable Printed Ticket Fallback in Company Config and allow this plant.";
+
+    const pending = state.tickets.filter(t => t.status === "pending").length;
+    document.getElementById("st-sync-sub").textContent = `${pending} manual tickets awaiting reconciliation`;
+    document.getElementById("nav-sync-badge").textContent = pending;
+    document.getElementById("nav-sync-badge").className = pending ? "pill warn" : "pill neutral";
+
+    const now = new Date();
+    const stamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    document.getElementById("t-issued").textContent = stamp;
+    document.getElementById("t-number").textContent = inFallback ? nextManualNumber(p.id, true) : "10428-A";
+  }
+
+  function nextManualNumber(plantId, peek) {
+    const now = new Date();
+    const yy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const n = String(state.seq).padStart(4, "0");
+    const num = `M-${plantId.toUpperCase().slice(0,2)}-${yy}${mm}-${n}`;
+    if (!peek) state.seq++;
+    return num;
+  }
+
+  function renderSync() {
+    const tbody = document.getElementById("sync-tbody");
+    const pending = state.tickets.filter(t => t.status === "pending");
+    document.getElementById("sync-count-title").textContent = `${pending.length} tickets pending reconciliation`;
+    document.getElementById("banner-sync-ok").style.display =
+      (state.network === "online" && pending.length > 0) ? "flex" : "none";
+
+    if (state.tickets.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 28px; color: var(--text-muted);">No manual tickets yet. Enter fallback mode and print a ticket to see it here.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = state.tickets.map(t => `
+      <tr class="queue-row">
+        <td><strong>${t.num}</strong></td>
+        <td>${t.plantName}</td>
+        <td>${t.order}</td>
+        <td>${t.customer}</td>
+        <td>${t.mix}</td>
+        <td>${t.qty} m³</td>
+        <td>${t.printedAt}</td>
+        <td>${t.status === "pending"
+            ? '<span class="pill warn"><span class="dot"></span> Pending</span>'
+            : '<span class="pill ok"><span class="dot"></span> Reconciled</span>'}</td>
+        <td style="text-align:right;">
+          ${t.status === "pending"
+            ? `<button class="btn sm primary" onclick="openReconcile('${t.num}')" ${state.network === "offline" ? "disabled title=\"Network offline\"" : ""}>Reconcile</button>`
+            : `<button class="btn sm" disabled>Done</button>`}
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  /* -----------------------------
+     Interactions
+     ----------------------------- */
+  document.getElementById("simulate-outage").addEventListener("click", () => {
+    state.network = (state.network === "online") ? "offline" : "online";
+    if (state.network === "online") {
+      // Auto exit fallback (per config default)
+      state.plants.forEach(p => p.fallback = false);
+      toast("Network restored. Plants returned to digital.", "ok");
+    } else {
+      toast("Simulated outage: Deliveries unreachable.", "warn");
+    }
+    render();
+  });
+
+  document.getElementById("cfg-feature-enabled").addEventListener("change", (e) => {
+    state.featureEnabled = e.target.checked;
+    if (!state.featureEnabled) state.plants.forEach(p => p.fallback = false);
+    toast(state.featureEnabled ? "Printed Ticket Fallback enabled." : "Printed Ticket Fallback disabled.", "ok");
+    render();
+  });
+
+  document.querySelectorAll('#scope-row input[name="scope"]').forEach(r => {
+    r.addEventListener("change", (e) => { state.scope = e.target.value; renderConfig(); });
+  });
+
+  document.getElementById("plant-toggle-fallback").addEventListener("click", togglePlantFallback);
+  document.getElementById("banner-enter-fallback").addEventListener("click", () => { enterFallback(); });
+  document.getElementById("banner-exit-fallback").addEventListener("click", () => { exitFallback(); });
+
+  function togglePlantFallback() {
+    const p = currentPlant();
+    if (p.fallback) exitFallback(); else enterFallback();
+  }
+  function enterFallback() {
+    const p = currentPlant();
+    if (!state.featureEnabled || !p.allowed) {
+      toast("Fallback not available: enable the feature and allow this plant.", "warn");
+      return;
+    }
+    p.fallback = true;
+    toast(`${p.name} switched to PRINTED tickets. Audit log updated.`, "warn");
+    render();
+  }
+  function exitFallback() {
+    const p = currentPlant();
+    p.fallback = false;
+    toast(`${p.name} returned to digital tickets.`, "ok");
+    render();
+  }
+
+  document.getElementById("btn-dispatch-digital").addEventListener("click", () => {
+    toast("Dispatched. Ticket uploaded to Deliveries.", "ok");
+  });
+
+  document.getElementById("btn-dispatch-manual").addEventListener("click", () => {
+    const p = currentPlant();
+    const num = nextManualNumber(p.id, false);
+    const now = new Date();
+    const stamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    state.tickets.unshift({
+      num, plantName: p.name,
+      order: "SO-10428", customer: "Harbour Construction Ltd",
+      mix: "30 MPa Pump", qty: 7.5,
+      printedAt: stamp, status: "pending",
+    });
+    toast(`Printed ${num}. Hand to driver and reconcile when back online.`, "warn");
+    render();
+    setTimeout(() => window.print(), 150);
+  });
+
+  document.getElementById("btn-print-preview").addEventListener("click", () => window.print());
+
+  /* Reconcile modal */
+  let reconcileNum = null;
+  function openReconcile(num) {
+    const t = state.tickets.find(x => x.num === num);
+    if (!t) return;
+    reconcileNum = num;
+    document.getElementById("reconcile-body").innerHTML = `
+      <p style="margin-top:0;">Match this printed ticket to the live order in Deliveries and finalise the delivery record.</p>
+      <div class="field"><label>Manual Ticket #</label><input type="text" value="${t.num}" readonly></div>
+      <div class="grid-2">
+        <div class="field"><label>Order</label><input type="text" value="${t.order}"></div>
+        <div class="field"><label>Customer</label><input type="text" value="${t.customer}"></div>
+        <div class="field"><label>Mix</label><input type="text" value="${t.mix}"></div>
+        <div class="field"><label>Qty (m³)</label><input type="number" value="${t.qty}"></div>
+        <div class="field"><label>Driver Signature</label><select><option>Captured (on paper)</option><option>Not available</option></select></div>
+        <div class="field"><label>Customer Signature</label><select><option>Captured (on paper)</option><option>Not available</option></select></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea placeholder="Any variance, timing, or signature exceptions"></textarea></div>
+    `;
+    document.getElementById("reconcile-modal").classList.add("open");
+  }
+  function closeModal() { document.getElementById("reconcile-modal").classList.remove("open"); reconcileNum = null; }
+  document.getElementById("reconcile-confirm").addEventListener("click", () => {
+    const t = state.tickets.find(x => x.num === reconcileNum);
+    if (t) { t.status = "reconciled"; toast(`${t.num} reconciled into Deliveries.`, "ok"); }
+    closeModal(); render();
+  });
+
+  document.getElementById("btn-sync-all").addEventListener("click", () => {
+    if (state.network === "offline") { toast("Network offline — restore before reconciling.", "warn"); return; }
+    const n = state.tickets.filter(t => t.status === "pending").length;
+    if (!n) { toast("Nothing to reconcile."); return; }
+    state.tickets.forEach(t => { if (t.status === "pending") t.status = "reconciled"; });
+    toast(`${n} manual tickets reconciled into Deliveries.`, "ok");
+    render();
+  });
+
+  /* Toasts */
+  function toast(msg, variant) {
+    const el = document.createElement("div");
+    el.className = "toast" + (variant ? " " + variant : "");
+    el.textContent = msg;
+    document.getElementById("toasts").appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  /* Seed demo */
+  (function seed() {
+    // Pre-enable feature & allow plants so the switch is discoverable
+    state.featureEnabled = true;
+    render();
+  })();
+</script>
+
+</body>
+</html>

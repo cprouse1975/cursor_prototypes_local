@@ -1031,11 +1031,48 @@
     setTimeout(() => el.remove(), 3200);
   }
 
-  /* Seed demo */
+  /* Seed demo
+     Supports URL hash seeds to make screenshots & demos reproducible:
+       #demo=config    – jump to Company Config view
+       #demo=plants    – jump to Plants view
+       #demo=fallback  – outage + North Plant in fallback mode
+       #demo=sync      – fallback + two printed tickets, land on Sync Queue
+  */
   (function seed() {
-    // Pre-enable feature & allow plants so the switch is discoverable
     state.featureEnabled = true;
-    render();
+    const hash = (location.hash || "").replace(/^#/, "");
+    const params = new URLSearchParams(hash);
+    const demo = params.get("demo");
+
+    if (demo === "fallback" || demo === "sync") {
+      state.network = "offline";
+      const p = currentPlant();
+      p.fallback = true;
+    }
+    if (demo === "sync") {
+      const p = currentPlant();
+      const now = new Date();
+      const stamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      for (let i = 0; i < 2; i++) {
+        state.tickets.unshift({
+          num: nextManualNumber(p.id, false),
+          plantName: p.name,
+          order: i === 0 ? "SO-10428" : "SO-10431",
+          customer: i === 0 ? "Harbour Construction Ltd" : "Westgate Civil",
+          mix: i === 0 ? "30 MPa Pump" : "25 MPa Standard",
+          qty: i === 0 ? 7.5 : 5.0,
+          printedAt: stamp,
+          status: "pending",
+        });
+      }
+    }
+
+    const demoToView = { config: "config", plants: "plants", fallback: "plant", sync: "sync" };
+    if (demo && demoToView[demo]) {
+      go(demoToView[demo]);
+    } else {
+      render();
+    }
   })();
 </script>
 

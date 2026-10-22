@@ -610,29 +610,33 @@ export default function App() {
 
             <Card>
               <CardBody>
-                <Row align="start" gap={16}>
-                  <Stack gap={6} style={{ flex: 1 }}>
-                    <Stack gap={2}>
+                <Stack gap={12}>
+                  <Row justify="space-between" align="center">
+                    <Stack gap={1}>
                       <Text weight="semibold">Offline Print Fallback</Text>
-                      <Text size="small" tone="secondary">
-                        When enabled, an Offline mode toggle appears in the Batch Queue for plant operators. During a network outage they can switch to Batch &amp; Print — tickets print at the plant printer with all dispatch data pre-filled, and queue automatically for Trackit and Deliveries sync when connectivity is restored.
-                      </Text>
+                      <Text size="small" tone="secondary">Applies to all plants · Acme Concrete Group</Text>
                     </Stack>
-                    {companyPrintEnabled ? (
-                      <Callout tone="success" title="Enabled — Offline mode is available to batch operators">
-                        Operators can flip Offline mode in the Batch Queue during a network outage. The button changes to Batch &amp; Print and tickets queue for sync.
-                      </Callout>
-                    ) : (
-                      <Callout tone="neutral" title="Disabled — digital tickets only">
-                        The Offline mode toggle is hidden from operators. Only Batch Ticket (digital) is available. Flip the toggle to enable the fallback.
-                      </Callout>
-                    )}
-                  </Stack>
-                  <Stack gap={3} style={{ alignItems: "flex-end", flexShrink: 0 }}>
-                    <Text size="small" tone="secondary">Enabled</Text>
-                    <Toggle checked={companyPrintEnabled} onChange={handleCompanyToggle} />
-                  </Stack>
-                </Row>
+                    <Row gap={8} align="center">
+                      <Text size="small" tone={companyPrintEnabled ? "primary" : "secondary"}>
+                        {companyPrintEnabled ? "Enabled" : "Disabled"}
+                      </Text>
+                      <Toggle checked={companyPrintEnabled} onChange={handleCompanyToggle} />
+                    </Row>
+                  </Row>
+                  <Divider />
+                  <Text size="small" tone="secondary">
+                    When enabled, an Offline mode toggle appears in the Batch Queue for plant operators. During a network outage they can switch to Batch &amp; Print — tickets print at the plant printer with all dispatch data pre-filled, and queue automatically for Trackit and Deliveries sync when connectivity is restored.
+                  </Text>
+                  {companyPrintEnabled ? (
+                    <Callout tone="success" title="Enabled — Offline mode is available to batch operators">
+                      Operators can flip Offline mode in the Batch Queue during a network outage. The button changes to Batch &amp; Print and tickets queue for sync.
+                    </Callout>
+                  ) : (
+                    <Callout tone="neutral" title="Disabled — digital tickets only">
+                      The Offline mode toggle is hidden from operators. Only Batch Ticket (digital) is available. Flip the toggle to enable the fallback.
+                    </Callout>
+                  )}
+                </Stack>
               </CardBody>
             </Card>
 

@@ -40,6 +40,21 @@ Open the **Overview & Feedback** tab in the live canvas and use the flag toggles
 9. Regulatory / compliance requirements for delivery dockets?
 10. Platform-also-down edge case — fully offline mode?
 
-## Source file
+## Simplified approach (v2)
 
-`trackit-printed-ticket-fallback.canvas.tsx` — Cursor Canvas (React, `cursor/canvas` SDK). Open in Cursor to edit or extend.
+A second, simpler prototype explores a single company-level toggle with no per-plant configuration:
+
+**Live canvas:** https://cursor.com/canvas/store-a5061daa-b21e-403a-aabb-4ce6ab1db1a3/326db5a1-a468-4e24-b70d-b0397b1fe5bd
+
+| | Simple (v2) | Full config (v1) |
+|---|---|---|
+| Switch | One company toggle | Global + per-plant |
+| Printer setup | Outside the system | Configured per plant in system |
+| Templates | One shared | Multiple, per-plant assignment |
+| Failover | Manual (admin decision) | Auto-detect + threshold |
+| Best for | Quick setup, all plants similar | Mixed readiness, automation needed |
+
+## Source files
+
+- `trackit-printed-ticket-fallback.canvas.tsx` — Full configuration prototype (v1)
+- `trackit-manual-ticket-mode-simplified.canvas.tsx` — Simplified company-level prototype (v2)

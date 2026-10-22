@@ -1,7 +1,7 @@
 import {
   useState,
   Stack, Row, Grid, Card, CardHeader, CardBody,
-  H1, H2, H3, Text, Divider, Spacer,
+  H2, H3, Text, Divider,
   Button, Pill, Toggle, Checkbox, Select, TextInput,
   Stat, Callout,
   useHostTheme,
@@ -73,6 +73,7 @@ const TAB_OPTIONS   = [
   { value: "queue",    label: "Batch Queue"     },
   { value: "sync",     label: "Pending Sync"    },
   { value: "template", label: "Ticket Template" },
+  { value: "config",   label: "Company Config"  },
 ];
 
 // ── Ticket Mockup ──────────────────────────────────────────────────────────
@@ -81,14 +82,14 @@ function TicketMockup({ template, order }: { template: TicketTemplate; order?: B
   const theme = useHostTheme();
   const now = new Date();
   const s: Record<string, string> = {
-    ticket_no: order?.ticketNo ?? "002101",       order_no:  order?.orderNo ?? "ORD-18261",
-    plant:     "Southpark Ready Mix",             date:      now.toLocaleDateString("en-AU"),
+    ticket_no: order?.ticketNo ?? "002101",      order_no:  order?.orderNo ?? "ORD-18261",
+    plant:     "Southpark Ready Mix",            date:      now.toLocaleDateString("en-AU"),
     batch_tm:  now.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" }),
-    sched_del: order?.scheduledTime ?? "11:00",   customer:  order?.customer  ?? "Acme Construction Pty Ltd",
+    sched_del: order?.scheduledTime ?? "11:00",  customer:  order?.customer  ?? "Acme Construction Pty Ltd",
     deliv_adr: order?.deliveryAddress ?? "47 Builder St, Southpark",
-    job_ref:   order?.jobRef ?? "JOB-2026-0891", product:   order?.product   ?? "32 MPa Normal Portland",
+    job_ref:   order?.jobRef ?? "JOB-2026-0891", product:  order?.product   ?? "32 MPa Normal Portland",
     volume:    order ? `${order.volume} m3` : "6.0 m3",
-    vehicle:   order?.vehicle ?? "TRK-047",       driver:    order?.driver    ?? "J. Morrison",
+    vehicle:   order?.vehicle ?? "TRK-047",      driver:    order?.driver    ?? "J. Morrison",
   };
   const sysF = template.systemFields.filter(f => f.enabled && f.id !== "ticket_no" && f.id !== "order_no");
   const addF = template.additionalFields.filter(f => f.enabled);
@@ -145,10 +146,10 @@ function PrintModal({ order, template, onDone, onClose }: { order: BatchOrder; t
           </Stack>
           <Stack gap={7} style={{ width: "100%", maxWidth: 340 }}>
             {[
-              { label: "Ticket printed at plant printer", note: "",                                               done: true  },
-              { label: "Batch confirmed in system",       note: "",                                               done: true  },
-              { label: "Queued for Trackit sync",         note: "Will send when network is restored",            done: false },
-              { label: "Queued for Deliveries sync",      note: "Driver record will reconcile on reconnect",     done: false },
+              { label: "Ticket printed at plant printer", note: "",                                           done: true  },
+              { label: "Batch confirmed in system",       note: "",                                           done: true  },
+              { label: "Queued for Trackit sync",         note: "Will send when network is restored",        done: false },
+              { label: "Queued for Deliveries sync",      note: "Driver record will reconcile on reconnect", done: false },
             ].map(({ label, note, done }, i) => (
               <Row key={i} align="start" gap={10}>
                 <div style={{ width: 18, height: 18, borderRadius: "50%", background: done ? theme.accent.primary : theme.fill.tertiary, border: done ? "none" : `1px solid ${theme.stroke.secondary}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
@@ -320,15 +321,16 @@ function TemplateEditor({ template, onUpdate }: { template: TicketTemplate; onUp
 
 export default function App() {
   const theme = useHostTheme();
-  const [tab, setTab]                 = useState("queue");
-  const [offlineMode, setOfflineMode] = useState(false);
-  const [orders, setOrders]           = useState<BatchOrder[]>(INIT_ORDERS);
-  const [template, setTemplate]       = useState<TicketTemplate>(INIT_TEMPLATE);
-  const [printTarget, setPrintTarget] = useState<BatchOrder | null>(null);
-  const [batchTarget, setBatchTarget] = useState<BatchOrder | null>(null);
-  const [batchingId, setBatchingId]   = useState<string | null>(null);
-  const [saved, setSaved]             = useState(false);
-  const [syncing, setSyncing]         = useState(false);
+  const [tab, setTab]                         = useState("config");
+  const [companyPrintEnabled, setCompanyPrint] = useState(false);
+  const [offlineMode, setOfflineMode]         = useState(false);
+  const [orders, setOrders]                   = useState<BatchOrder[]>(INIT_ORDERS);
+  const [template, setTemplate]               = useState<TicketTemplate>(INIT_TEMPLATE);
+  const [printTarget, setPrintTarget]         = useState<BatchOrder | null>(null);
+  const [batchTarget, setBatchTarget]         = useState<BatchOrder | null>(null);
+  const [batchingId, setBatchingId]           = useState<string | null>(null);
+  const [saved, setSaved]                     = useState(false);
+  const [syncing, setSyncing]                 = useState(false);
 
   const readyOrders    = orders.filter(o => o.status === "ready");
   const completedToday = orders.filter(o => o.status === "batched" || o.status === "printed" || o.status === "synced");
@@ -337,6 +339,10 @@ export default function App() {
 
   const nowStr = () => new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" });
 
+  function handleCompanyToggle(v: boolean) {
+    setCompanyPrint(v);
+    if (!v) setOfflineMode(false);
+  }
   function handleAction(order: BatchOrder) {
     setBatchingId(order.id);
     setTimeout(() => {
@@ -361,28 +367,37 @@ export default function App() {
     }, 1800);
   }
 
+  const modeBarBg     = offlineMode ? "#7a2b2b18" : theme.bg.editor;
+  const modeBarBorder = offlineMode ? "#c0393922" : theme.stroke.tertiary;
+
   return (
-    <Stack gap={0} style={{ maxWidth: 920, margin: "0 auto" }}>
+    <Stack gap={0} style={{ maxWidth: 960, margin: "0 auto" }}>
 
       {/* ── Mode bar ── */}
-      <div style={{ padding: "14px 28px", background: offlineMode ? "#7a2b2b18" : theme.bg.editor, borderBottom: `1px solid ${offlineMode ? "#c0393922" : theme.stroke.tertiary}`, display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ padding: "14px 28px", background: modeBarBg, borderBottom: `1px solid ${modeBarBorder}`, display: "flex", alignItems: "center", gap: 14 }}>
         <Stack gap={1} style={{ flex: 1 }}>
           <Row gap={10} align="center">
             <Text weight="semibold">Southpark Ready Mix — Batch Queue</Text>
-            {offlineMode
-              ? <Pill size="sm">Offline mode — Batch &amp; Print active</Pill>
-              : <Pill size="sm" active>Online — digital tickets</Pill>}
+            {!companyPrintEnabled && <Pill size="sm">Digital tickets only</Pill>}
+            {companyPrintEnabled && !offlineMode && <Pill size="sm" active>Online — digital tickets</Pill>}
+            {companyPrintEnabled && offlineMode && <Pill size="sm">Offline mode — Batch &amp; Print active</Pill>}
           </Row>
           <Text size="small" tone="secondary">
-            {offlineMode
-              ? "Network outage. Batch & Print is active — tickets print at the plant and queue for Trackit and Deliveries sync on reconnect."
-              : "Normal operation. Batch Ticket sends the ticket digitally to Trackit and the driver in Deliveries."}
+            {!companyPrintEnabled
+              ? "Offline print fallback is not enabled for this company."
+              : offlineMode
+                ? "Network outage. Batch & Print is active — tickets print at the plant and queue for Trackit and Deliveries sync on reconnect."
+                : "Normal operation. Batch Ticket sends the ticket digitally to Trackit and the driver in Deliveries."}
           </Text>
         </Stack>
-        <Stack gap={3} style={{ alignItems: "flex-end", flexShrink: 0 }}>
-          <Text size="small" tone="secondary">Offline mode</Text>
-          <Toggle checked={offlineMode} onChange={v => { setOfflineMode(v); }} />
-        </Stack>
+        {companyPrintEnabled ? (
+          <Stack gap={3} style={{ alignItems: "flex-end", flexShrink: 0 }}>
+            <Text size="small" tone="secondary">Offline mode</Text>
+            <Toggle checked={offlineMode} onChange={setOfflineMode} />
+          </Stack>
+        ) : (
+          <Button variant="secondary" onClick={() => setTab("config")}>Configure in Company Config</Button>
+        )}
       </div>
 
       <Stack gap={20} style={{ padding: "24px 28px" }}>
@@ -406,12 +421,17 @@ export default function App() {
         {/* ── BATCH QUEUE ── */}
         {tab === "queue" && (
           <Stack gap={14}>
-            {offlineMode && (
-              <Callout tone="warning" title="Offline mode is on — Batch & Print is active">
-                The button on each order is now Batch &amp; Print. Clicking it prints the ticket at the plant printer and queues the batch confirmation for Trackit and Deliveries. Switch this toggle off when the network is restored to return to digital tickets.
+            {!companyPrintEnabled && (
+              <Callout tone="neutral" title="Offline print fallback is not enabled">
+                An admin has not yet enabled Offline Print for this company. Only digital ticket batching is available. Go to Company Config to turn it on.
               </Callout>
             )}
-            {!offlineMode && (
+            {companyPrintEnabled && offlineMode && (
+              <Callout tone="warning" title="Offline mode is on — Batch & Print is active">
+                The button on each order is now Batch &amp; Print. Clicking it prints the ticket at the plant printer and queues the batch confirmation for Trackit and Deliveries. Switch the toggle off when the network is restored to return to digital tickets.
+              </Callout>
+            )}
+            {companyPrintEnabled && !offlineMode && (
               <Callout tone="neutral" title="Normal mode — digital tickets">
                 Batch Ticket sends the ticket digitally to Trackit and the driver in Deliveries as normal. If the network goes down, flip the Offline mode toggle above — the button changes to Batch &amp; Print.
               </Callout>
@@ -445,7 +465,7 @@ export default function App() {
                             disabled={isBatching || batchingId !== null}
                             onClick={() => handleAction(order)}
                           >
-                            {isBatching ? "Processing..." : offlineMode ? "Batch & Print" : "Batch Ticket"}
+                            {isBatching ? "Processing..." : (companyPrintEnabled && offlineMode) ? "Batch & Print" : "Batch Ticket"}
                           </Button>
                         </Row>
                       </div>
@@ -470,9 +490,9 @@ export default function App() {
                           <Row gap={10} align="center" wrap>
                             <Text size="small" weight="semibold" tone="secondary">{order.orderNo}</Text>
                             <Text size="small" tone="tertiary">Ticket #{order.ticketNo}</Text>
-                            {order.status === "batched"  && <Pill size="sm" active>Batched digitally {order.actionTime}</Pill>}
-                            {order.status === "printed"  && <Pill size="sm">Printed {order.actionTime} — pending sync</Pill>}
-                            {order.status === "synced"   && <Pill size="sm" active>Printed &amp; synced to Trackit</Pill>}
+                            {order.status === "batched" && <Pill size="sm" active>Batched digitally {order.actionTime}</Pill>}
+                            {order.status === "printed" && <Pill size="sm">Printed {order.actionTime} — pending sync</Pill>}
+                            {order.status === "synced"  && <Pill size="sm" active>Printed &amp; synced to Trackit</Pill>}
                           </Row>
                           <Text size="small" tone="tertiary">{order.customer} · {order.product} · {order.volume} m3 · {order.vehicle}</Text>
                         </Stack>
@@ -494,7 +514,7 @@ export default function App() {
             <Stack gap={4}>
               <H2>Pending Sync</H2>
               <Text size="small" tone="secondary">
-                Tickets printed in offline mode, queued for Trackit and Deliveries. When the network is restored, click Sync Now — all queued tickets will reconcile automatically.
+                Tickets printed in offline mode, queued for Trackit and Deliveries. When the network is restored, click Sync Now to reconcile.
               </Text>
             </Stack>
 
@@ -577,9 +597,94 @@ export default function App() {
           </Stack>
         )}
 
+        {/* ── COMPANY CONFIG ── */}
+        {tab === "config" && (
+          <Stack gap={16}>
+            <Stack gap={4}>
+              <H2>Company Config</H2>
+              <Text size="small" tone="secondary">
+                Admin settings for Acme Concrete Group. The offline print fallback setting applies to all plants company-wide.
+              </Text>
+            </Stack>
+            <Divider />
+
+            <Card>
+              <CardBody>
+                <Row align="start" gap={16}>
+                  <Stack gap={6} style={{ flex: 1 }}>
+                    <Stack gap={2}>
+                      <Text weight="semibold">Offline Print Fallback</Text>
+                      <Text size="small" tone="secondary">
+                        When enabled, an Offline mode toggle appears in the Batch Queue for plant operators. During a network outage they can switch to Batch &amp; Print — tickets print at the plant printer with all dispatch data pre-filled, and queue automatically for Trackit and Deliveries sync when connectivity is restored.
+                      </Text>
+                    </Stack>
+                    {companyPrintEnabled ? (
+                      <Callout tone="success" title="Enabled — Offline mode is available to batch operators">
+                        Operators can flip Offline mode in the Batch Queue during a network outage. The button changes to Batch &amp; Print and tickets queue for sync.
+                      </Callout>
+                    ) : (
+                      <Callout tone="neutral" title="Disabled — digital tickets only">
+                        The Offline mode toggle is hidden from operators. Only Batch Ticket (digital) is available. Flip the toggle to enable the fallback.
+                      </Callout>
+                    )}
+                  </Stack>
+                  <Stack gap={3} style={{ alignItems: "flex-end", flexShrink: 0 }}>
+                    <Text size="small" tone="secondary">Enabled</Text>
+                    <Toggle checked={companyPrintEnabled} onChange={handleCompanyToggle} />
+                  </Stack>
+                </Row>
+              </CardBody>
+            </Card>
+
+            {companyPrintEnabled && (
+              <Stack gap={6}>
+                <Text size="small" weight="semibold" tone="secondary" style={{ textTransform: "uppercase" as const, letterSpacing: "0.05em", fontSize: 11 }}>Related settings</Text>
+                <Card>
+                  <CardBody>
+                    <Row align="center" gap={16}>
+                      <Stack gap={2} style={{ flex: 1 }}>
+                        <Text size="small" weight="semibold">Ticket Template</Text>
+                        <Text size="small" tone="secondary">Configure branding, paper size, copies, system fields, and driver additionals for offline print tickets.</Text>
+                      </Stack>
+                      <Button variant="secondary" onClick={() => setTab("template")}>Configure</Button>
+                    </Row>
+                  </CardBody>
+                </Card>
+              </Stack>
+            )}
+
+            <Card collapsible defaultOpen={false}>
+              <CardHeader>How it works</CardHeader>
+              <CardBody>
+                <Stack gap={10}>
+                  <Stack gap={3}>
+                    <Text size="small" weight="semibold">Toggle OFF (default)</Text>
+                    <Text size="small" tone="secondary">The Offline mode toggle is hidden from batch operators. Only digital ticket batching is available — Batch Ticket sends the ticket to Trackit and the driver in Deliveries immediately.</Text>
+                  </Stack>
+                  <Divider />
+                  <Stack gap={3}>
+                    <Text size="small" weight="semibold">Toggle ON — what operators see</Text>
+                    <Text size="small" tone="secondary">An Offline mode toggle appears in the Batch Queue header. During a network outage, operators flip it to activate Batch &amp; Print. All order data pre-populates the ticket from the dispatch system. The ticket prints at the plant printer (OS print dialog). The batch record and ticket data are queued in the system.</Text>
+                  </Stack>
+                  <Divider />
+                  <Stack gap={3}>
+                    <Text size="small" weight="semibold">Sync on reconnect</Text>
+                    <Text size="small" tone="secondary">When the network is restored, operators visit the Pending Sync tab and click Sync Now. All queued tickets reconcile automatically with Trackit and Deliveries. Operators then flip Offline mode off to return to digital tickets.</Text>
+                  </Stack>
+                  <Divider />
+                  <Stack gap={3}>
+                    <Text size="small" weight="semibold">Applies to</Text>
+                    <Text size="small" tone="secondary">All plants in Acme Concrete Group. The Offline mode toggle appears at each plant when this setting is on. Each plant operator controls their own Offline mode independently.</Text>
+                  </Stack>
+                </Stack>
+              </CardBody>
+            </Card>
+          </Stack>
+        )}
+
       </Stack>
 
-      {printTarget && <PrintModal    order={printTarget} template={template} onDone={handlePrinted} onClose={() => setPrintTarget(null)} />}
+      {printTarget && <PrintModal order={printTarget} template={template} onDone={handlePrinted} onClose={() => setPrintTarget(null)} />}
       {batchTarget  && <BatchConfirmModal order={batchTarget} onDone={handleBatched} onClose={() => setBatchTarget(null)} />}
     </Stack>
   );

@@ -341,7 +341,7 @@ export default function App() {
 
   function handleCompanyToggle(v: boolean) {
     setCompanyPrint(v);
-    if (!v) setOfflineMode(false);
+    setOfflineMode(v); // enabling the feature activates offline mode; disabling it resets both
   }
   function handleAction(order: BatchOrder) {
     setBatchingId(order.id);

@@ -359,7 +359,7 @@ export default function App() {
               <Text weight="semibold">Dispatch + Tracking Dashboard — print, monitor, and sync</Text>
             </Row>
             <Text size="small" tone="secondary">
-              Same Dispatch workflow as Version A. Adds a Tracking Dashboard showing all active deliveries — dispatchers see which trucks have printed tickets pending sync, can reprint individual tickets, and trigger sync for all queued tickets in one click when the network is restored.
+              Same Dispatch workflow as Version A. Adds a Tracking Dashboard to manage sync when the network is restored — showing which trucks have printed tickets pending reconciliation. Note: during the outage, the dashboard shows dispatch records only. Live GPS, truck locations and automatic delivery status updates depend on the same network and will not be available.
             </Text>
           </Stack>
         )}
@@ -499,13 +499,20 @@ export default function App() {
             <Stack gap={4}>
               <H2>Tracking Dashboard</H2>
               <Text size="small" tone="secondary">
-                Active deliveries from Southpark Ready Mix. Trucks with printed tickets are queued for Trackit and Deliveries sync — click Sync Now when the network is restored.
+                Dispatched orders for Southpark Ready Mix.
               </Text>
             </Stack>
 
+            {/* Key design consideration: live data is unavailable during the outage */}
+            {companyOn && (
+              <Callout tone="danger" title="Network outage — live truck data not available">
+                GPS location, automatic status updates (arrival, departure, delivery confirmation) and driver app data all depend on the same network connection. This screen is showing dispatch records only — scheduled deliveries based on what was entered in Dispatch. Truck positions and on-site status will not update until the network is restored.
+              </Callout>
+            )}
+
             {pendingSync.length > 0 && (
-              <Callout tone="warning" title={`${pendingSync.length} printed ticket${pendingSync.length > 1 ? "s" : ""} pending Trackit and Deliveries sync`}>
-                Tickets were printed at the plant during the outage. Drivers have their physical copies. Sync when the network is restored.
+              <Callout tone="warning" title={`${pendingSync.length} printed ticket${pendingSync.length > 1 ? "s" : ""} queued — ready to sync when network restores`}>
+                Tickets were printed at the plant. Drivers have their physical copies. Use Sync Now as soon as the network is restored.
               </Callout>
             )}
             {syncedOffline.length > 0 && pendingSync.length === 0 && (
@@ -514,39 +521,53 @@ export default function App() {
               </Callout>
             )}
             {activeDeliveries.length === 0 && (
-              <Callout tone="neutral" title="No active deliveries">No trucks have been dispatched yet. Go to Dispatch to ticket trucks.</Callout>
+              <Callout tone="neutral" title="No dispatched orders">No trucks have been dispatched yet today. Go to Dispatch to ticket trucks.</Callout>
             )}
 
             {activeDeliveries.length > 0 && (
-              <Stack gap={4}>
-                {activeDeliveries.map(order => {
-                  const isPrinted = order.status === "printed";
-                  const isSynced  = order.status === "synced";
-                  const isDigital = order.status === "dispatched";
-                  return (
-                    <div key={order.id} style={{ border:`1px solid ${isPrinted ? theme.stroke.secondary : theme.stroke.tertiary}`, borderRadius:8, padding:"14px 16px", background:isPrinted ? theme.bg.elevated : theme.fill.tertiary }}>
-                      <Row align="center" gap={12}>
-                        <div style={{ width:38, height:38, borderRadius:8, background:theme.fill.secondary, border:`1px solid ${theme.stroke.tertiary}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                        </div>
-                        <Stack gap={3} style={{ flex:1, minWidth:0 }}>
-                          <Row gap={8} align="center" wrap>
-                            <Text weight="semibold">{order.vehicle}</Text>
-                            <Text size="small" tone="secondary">{order.driver}</Text>
-                            {isDigital && <Pill size="sm" active>Digital ticket · {order.actionTime}</Pill>}
-                            {isPrinted && <Pill size="sm">Printed ticket · pending sync · {order.actionTime}</Pill>}
-                            {isSynced  && <Pill size="sm" active>Printed &amp; synced · {order.actionTime}</Pill>}
-                          </Row>
-                          <Text size="small" tone="secondary">{order.orderNo} · {order.customer}</Text>
-                          <Text size="small" tone="tertiary">{order.product} · {order.volume} m3 · En route to {order.deliveryAddress}</Text>
-                        </Stack>
-                        {isPrinted && (
-                          <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>
-                        )}
-                      </Row>
-                    </div>
-                  );
-                })}
+              <Stack gap={6}>
+                <Text size="small" weight="semibold" tone="secondary" style={{ textTransform:"uppercase" as const, letterSpacing:"0.05em", fontSize:11 }}>
+                  {companyOn
+                    ? "Dispatched orders — scheduled delivery (dispatch record only, no live tracking)"
+                    : "Dispatched orders — live tracking active"}
+                </Text>
+                <Stack gap={4}>
+                  {activeDeliveries.map(order => {
+                    const isPrinted = order.status === "printed";
+                    const isSynced  = order.status === "synced";
+                    const isDigital = order.status === "dispatched";
+                    return (
+                      <div key={order.id} style={{ border:`1px solid ${isPrinted ? theme.stroke.secondary : theme.stroke.tertiary}`, borderRadius:8, padding:"14px 16px", background:isPrinted ? theme.bg.elevated : theme.fill.tertiary }}>
+                        <Row align="center" gap={12}>
+                          <div style={{ width:38, height:38, borderRadius:8, background:theme.fill.secondary, border:`1px solid ${theme.stroke.tertiary}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                          </div>
+                          <Stack gap={3} style={{ flex:1, minWidth:0 }}>
+                            <Row gap={8} align="center" wrap>
+                              <Text weight="semibold">{order.vehicle}</Text>
+                              <Text size="small" tone="secondary">{order.driver}</Text>
+                              {isDigital && !companyOn && <Pill size="sm" active>Digital ticket · {order.actionTime}</Pill>}
+                              {isDigital && companyOn  && <Pill size="sm">Digital ticket · {order.actionTime} · no live status</Pill>}
+                              {isPrinted && <Pill size="sm">Printed ticket · pending sync · {order.actionTime}</Pill>}
+                              {isSynced  && <Pill size="sm" active>Printed &amp; synced · {order.actionTime}</Pill>}
+                            </Row>
+                            <Text size="small" tone="secondary">{order.orderNo} · {order.customer}</Text>
+                            {/* "En route" replaced with "Scheduled delivery" during outage — live position is unknown */}
+                            <Text size="small" tone="tertiary">
+                              {order.product} · {order.volume} m3 ·{" "}
+                              {companyOn
+                                ? `Scheduled delivery: ${order.deliveryAddress}`
+                                : `En route to ${order.deliveryAddress}`}
+                            </Text>
+                          </Stack>
+                          {isPrinted && (
+                            <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>
+                          )}
+                        </Row>
+                      </div>
+                    );
+                  })}
+                </Stack>
               </Stack>
             )}
 
@@ -722,7 +743,7 @@ export default function App() {
                       <Row align="center" gap={16}>
                         <Stack gap={2} style={{ flex:1 }}>
                           <Text size="small" weight="semibold">Tracking Dashboard</Text>
-                          <Text size="small" tone="secondary">Monitor active deliveries and sync printed tickets when the network is restored.</Text>
+                          <Text size="small" tone="secondary">Dispatch records only during outage. Use to manage sync when the network is restored.</Text>
                         </Stack>
                         <Button variant="secondary" onClick={() => setTab("tracking")}>Go to Tracking</Button>
                       </Row>
@@ -761,9 +782,9 @@ export default function App() {
                     <>
                       <Divider />
                       <Stack gap={3}>
-                        <Text size="small" weight="semibold">Tracking Dashboard</Text>
+                        <Text size="small" weight="semibold">Tracking Dashboard — important limitation</Text>
                         <Text size="small" tone="secondary">
-                          Shows all active deliveries with a clear visual distinction between digital tickets and printed tickets pending sync. Dispatchers can reprint any ticket and trigger sync for all queued tickets in one click. This gives full visibility of the offline period without needing to go order-by-order.
+                          During a network outage, the Tracking Dashboard shows dispatch records only — scheduled deliveries from what was entered in Dispatch. Live GPS, truck locations, and automatic delivery status updates (arrival, departure, confirmation) all depend on the same network connection and will not be available. The dashboard's primary value during an outage is identifying which tickets are printed and pending sync. Its full tracking capability returns when the network is restored.
                         </Text>
                       </Stack>
                     </>

@@ -721,6 +721,79 @@ export default function App() {
             </Card>
 
             {/* Next steps when enabled */}
+            {/* Feature dependency / sequencing note — always visible */}
+            <Card collapsible defaultOpen>
+              <CardHeader>Feature sequencing — related print capabilities</CardHeader>
+              <CardBody>
+                <Stack gap={12}>
+                  <Text size="small" tone="secondary">
+                    There are two separate print features in scope, both routing to the same printer setup configured above. Building them in order means the shared infrastructure is validated once and reused.
+                  </Text>
+
+                  <Stack gap={8}>
+                    {/* Feature 1 */}
+                    <div style={{ borderLeft:`3px solid ${theme.accent.primary}`, paddingLeft:12 }}>
+                      <Stack gap={4}>
+                        <Row gap={8} align="center">
+                          <Pill size="sm" active>Feature 1 — This prototype</Pill>
+                          <Text size="small" weight="semibold">Offline Print Fallback</Text>
+                        </Row>
+                        <Text size="small" tone="secondary">
+                          Network outage emergency mode. Admin flips a company-wide toggle — all plants switch from digital to printed tickets immediately. Dispatcher uses Ticket &amp; Print in Dispatch. Data queues for Trackit and Deliveries sync on reconnect.
+                        </Text>
+                        <Row gap={6} wrap>
+                          <Pill size="sm">Company-wide toggle</Pill>
+                          <Pill size="sm">Emergency / temporary</Pill>
+                          <Pill size="sm">Replaces digital ticketing</Pill>
+                          <Pill size="sm">Sync on reconnect</Pill>
+                        </Row>
+                      </Stack>
+                    </div>
+
+                    {/* Feature 2 */}
+                    <div style={{ borderLeft:`3px solid ${theme.stroke.secondary}`, paddingLeft:12 }}>
+                      <Stack gap={4}>
+                        <Row gap={8} align="center">
+                          <Pill size="sm">Feature 2 — Follow-on</Pill>
+                          <Text size="small" weight="semibold">Contract Fulfilment Print</Text>
+                        </Row>
+                        <Text size="small" tone="secondary">
+                          Some customers require a physical printed ticket as a contractual obligation — regardless of network availability. This is a routine, planned capability configured per customer or order type. The ticket prints alongside the digital send (not instead of it) as part of the standard dispatch flow.
+                        </Text>
+                        <Row gap={6} wrap>
+                          <Pill size="sm">Per-customer / per-order flag</Pill>
+                          <Pill size="sm">Routine / always-on for flagged customers</Pill>
+                          <Pill size="sm">Runs alongside digital ticketing</Pill>
+                          <Pill size="sm">No sync step needed</Pill>
+                        </Row>
+                      </Stack>
+                    </div>
+                  </Stack>
+
+                  <Divider />
+
+                  <Stack gap={4}>
+                    <Text size="small" weight="semibold">Shared infrastructure (built once in Feature 1)</Text>
+                    <Stack gap={3}>
+                      {[
+                        "Default printer configuration per plant (this screen)",
+                        "Print action and confirmation flow in Dispatch",
+                        "Existing delivery ticket format — no new template",
+                      ].map((item, i) => (
+                        <Row key={i} align="start" gap={8}>
+                          <div style={{ width:5, height:5, borderRadius:"50%", background:theme.stroke.secondary, flexShrink:0, marginTop:6 }} />
+                          <Text size="small" tone="secondary">{item}</Text>
+                        </Row>
+                      ))}
+                    </Stack>
+                    <Text size="small" tone="tertiary" style={{ marginTop:4 }}>
+                      Feature 2 inherits all of the above. When scoping Contract Fulfilment Print, printer setup, the print trigger in Dispatch, and the ticket format are already built and validated — the additional work is the per-customer/order flag and the logic to print alongside the digital send.
+                    </Text>
+                  </Stack>
+                </Stack>
+              </CardBody>
+            </Card>
+
             {companyOn && (
               <Stack gap={6}>
                 <Text size="small" weight="semibold" tone="secondary" style={{ textTransform:"uppercase" as const, letterSpacing:"0.05em", fontSize:11 }}>

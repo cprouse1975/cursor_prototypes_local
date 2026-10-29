@@ -10,7 +10,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Ver = "A" | "B";
-type OrderStatus = "ready" | "dispatched" | "printed" | "synced";
+type OrderStatus = "ready" | "dispatched" | "printed";
 
 interface DispatchOrder {
   id: string; orderNo: string; ticketNo: string;
@@ -55,7 +55,6 @@ function sysVals(order?: DispatchOrder): [string, string][] {
   ];
 }
 
-// Blank lines already on the existing standard delivery ticket
 const STD_BLANKS = [
   { label:"Actual Arrival Time",    tall:false },
   { label:"Actual Departure Time",  tall:false },
@@ -65,7 +64,7 @@ const STD_BLANKS = [
   { label:"Driver Signature",       tall:true  },
 ];
 
-// ── Standard delivery ticket (existing format, no new template) ────────────
+// ── Standard delivery ticket ───────────────────────────────────────────────
 
 function StdTicket({ order }: { order?: DispatchOrder }) {
   const theme = useHostTheme();
@@ -104,14 +103,14 @@ function StdTicket({ order }: { order?: DispatchOrder }) {
       </div>
       <div style={{ padding:"5px 14px", borderTop:`1px solid ${theme.stroke.tertiary}`, background:theme.fill.secondary }}>
         <Text size="small" tone="tertiary" style={{ textAlign:"center", fontSize:9, letterSpacing:"0.05em" }}>
-          PRINTED COPY · EXISTING TEMPLATE · QUEUED FOR TRACKIT SYNC
+          PRINT MODE ONLY · TRACKIT &amp; DELIVERIES NOT NOTIFIED
         </Text>
       </div>
     </div>
   );
 }
 
-// ── Print Modal (offline: Ticket & Print) ─────────────────────────────────
+// ── Print Modal ────────────────────────────────────────────────────────────
 
 function PrintModal({ order, onDone, onClose }: { order:DispatchOrder; onDone:()=>void; onClose:()=>void }) {
   const theme = useHostTheme();
@@ -132,24 +131,20 @@ function PrintModal({ order, onDone, onClose }: { order:DispatchOrder; onDone:()
           </Stack>
           <Stack gap={7} style={{ width:"100%", maxWidth:340 }}>
             {([
-              { label:"Ticket printed at Southpark Ready Mix", note:"",                                           d:true  },
-              { label:"Order ticketed in Dispatch",            note:"",                                           d:true  },
-              { label:"Queued for Trackit sync",               note:"Will send when network is restored",        d:false },
-              { label:"Queued for Deliveries sync",            note:"Driver record will reconcile on reconnect", d:false },
-            ] as const).map(({ label, note, d }, i) => (
+              { label:"Ticket printed at Southpark Ready Mix", d:true },
+              { label:"Order recorded in Dispatch",            d:true },
+            ] as const).map(({ label, d }, i) => (
               <Row key={i} align="start" gap={10}>
-                <div style={{ width:18, height:18, borderRadius:"50%", background:d ? theme.accent.primary : theme.fill.tertiary, border:d ? "none" : `1px solid ${theme.stroke.secondary}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2 }}>
-                  {d
-                    ? <svg width={10} height={10} viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke={theme.text.onAccent} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    : <div style={{ width:6, height:6, borderRadius:"50%", background:theme.stroke.secondary }} />}
+                <div style={{ width:18, height:18, borderRadius:"50%", background:theme.accent.primary, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2 }}>
+                  <svg width={10} height={10} viewBox="0 0 10 10" fill="none"><path d="M2 5l2 2 4-4" stroke={theme.text.onAccent} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </div>
-                <Stack gap={1}>
-                  <Text size="small" tone={d ? "primary" : "tertiary"}>{label}</Text>
-                  {note ? <Text size="small" tone="tertiary" style={{ fontSize:11 }}>{note}</Text> : null}
-                </Stack>
+                <Text size="small">{label}</Text>
               </Row>
             ))}
           </Stack>
+          <Callout tone="danger" title="Trackit and Deliveries not notified">
+            Print Ticket Mode is active as a kill switch. This order was not sent to Trackit or to the driver in Deliveries. The printed ticket is the only record. Turn off Print Ticket Mode in Company Config to restore digital dispatch.
+          </Callout>
           <Text size="small" tone="secondary">
             Driver fills in arrival time, departure, slump etc. — blank fields are already on the standard ticket.
           </Text>
@@ -172,8 +167,8 @@ function PrintModal({ order, onDone, onClose }: { order:DispatchOrder; onDone:()
           </Button>
         </div>
         <Stack gap={14} style={{ padding:"14px 18px 18px" }}>
-          <Callout tone="warning" title="Print ticket mode — existing delivery ticket">
-            System data pre-fills from the dispatch order. Driver writes arrival time, departure, slump etc. in the blank fields already on the standard ticket. Data queues for Trackit and Deliveries sync on reconnect.
+          <Callout tone="danger" title="Print Ticket Mode — Trackit &amp; Deliveries not notified">
+            System data pre-fills from the dispatch order. This ticket will print only — it will NOT be sent to Trackit or to the driver in Deliveries. Driver writes arrival time, departure, slump etc. in the blank fields on the standard ticket. The printed ticket is the only record.
           </Callout>
           <StdTicket order={order} />
           <Row gap={8} justify="end">
@@ -186,7 +181,7 @@ function PrintModal({ order, onDone, onClose }: { order:DispatchOrder; onDone:()
   );
 }
 
-// ── Digital Dispatch Modal (online mode) ───────────────────────────────────
+// ── Digital Dispatch Modal ─────────────────────────────────────────────────
 
 function DigitalModal({ order, onDone, onClose }: { order:DispatchOrder; onDone:()=>void; onClose:()=>void }) {
   const theme = useHostTheme();
@@ -243,7 +238,6 @@ export default function App() {
   const theme = useHostTheme();
   const [ver, setVer] = useState<Ver>("A");
 
-  // Per-version state — switching versions preserves each demo's progress
   const [compA, setCompA] = useState(false);
   const [ordA,  setOrdA]  = useState<DispatchOrder[]>(ORDERS);
   const [tabA,  setTabA]  = useState("config");
@@ -257,7 +251,6 @@ export default function App() {
   const [printTarget,   setPrintTarget]   = useState<DispatchOrder | null>(null);
   const [digitalTarget, setDigitalTarget] = useState<DispatchOrder | null>(null);
   const [actioningId,   setActioningId]   = useState<string | null>(null);
-  const [syncing,       setSyncing]       = useState(false);
 
   const companyOn  = ver === "A" ? compA    : compB;
   const orders     = ver === "A" ? ordA     : ordB;
@@ -289,35 +282,27 @@ export default function App() {
     if (!digitalTarget) return;
     setOrders(os => os.map(o => o.id === digitalTarget.id ? { ...o, status:"dispatched" as const, actionTime:nowStr() } : o));
   }
-  function handleSyncAll() {
-    setSyncing(true);
-    setTimeout(() => {
-      setSyncing(false);
-      setOrders(os => os.map(o => o.status === "printed" ? { ...o, status:"synced" as const } : o));
-    }, 1800);
-  }
 
   const readyOrders      = orders.filter(o => o.status === "ready");
   const completedToday   = orders.filter(o => o.status !== "ready");
-  const pendingSync      = orders.filter(o => o.status === "printed");
-  const syncedOffline    = orders.filter(o => o.status === "synced");
+  const printedToday     = orders.filter(o => o.status === "printed");
   const activeDeliveries = orders.filter(o => o.status !== "ready");
 
   const TAB_A = [
     { value:"dispatch", label:"Dispatch"       },
-    { value:"sync",     label:"Pending Sync"   },
+    { value:"printed",  label:"Printed Today"  },
     { value:"config",   label:"Company Config" },
   ];
   const TAB_B = [
-    { value:"dispatch",  label:"Dispatch"             },
-    { value:"tracking",  label:"Tracking Dashboard"   },
-    { value:"config",    label:"Company Config"       },
+    { value:"dispatch",  label:"Dispatch"           },
+    { value:"tracking",  label:"Tracking Dashboard" },
+    { value:"config",    label:"Company Config"     },
   ];
   const tabOpts = ver === "A" ? TAB_A : TAB_B;
 
   function tabLabel(t: { value: string; label: string }) {
-    if (t.value === "sync"     && pendingSync.length > 0) return `Pending Sync (${pendingSync.length})`;
-    if (t.value === "tracking" && pendingSync.length > 0) return `Tracking Dashboard (${pendingSync.length})`;
+    if (t.value === "printed"  && printedToday.length > 0) return `Printed Today (${printedToday.length})`;
+    if (t.value === "tracking" && printedToday.length > 0) return `Tracking Dashboard (${printedToday.length})`;
     return t.label;
   }
 
@@ -349,17 +334,17 @@ export default function App() {
               <Text weight="semibold">Dispatch screen — print at point of ticketing the truck</Text>
             </Row>
             <Text size="small" tone="secondary">
-              Admin switches all plants to print mode via one Company Config toggle. In Dispatch, the Ticket Truck button becomes Ticket &amp; Print. The existing delivery ticket prints at the plant printer — no new template needed. Dispatcher works exactly as today. Printed tickets queue for Trackit and Deliveries sync.
+              Admin switches all plants to print mode via one Company Config toggle. In Dispatch, the Ticket Truck button becomes Ticket &amp; Print. The existing delivery ticket prints at the plant printer — no new template needed. Trackit and Deliveries are not notified when print mode is active; the printed ticket is the only record.
             </Text>
           </Stack>
         ) : (
           <Stack gap={3}>
             <Row gap={8} align="center">
               <Pill size="sm">Version B</Pill>
-              <Text weight="semibold">Dispatch + Tracking Dashboard — print, monitor, and sync</Text>
+              <Text weight="semibold">Dispatch + Tracking Dashboard — print and monitor today's dispatches</Text>
             </Row>
             <Text size="small" tone="secondary">
-              Same Dispatch workflow as Version A. Adds a Tracking Dashboard to manage sync when the network is restored — showing which trucks have printed tickets pending reconciliation. Note: during the outage, the dashboard shows dispatch records only. Live GPS, truck locations and automatic delivery status updates depend on the same network and will not be available.
+              Same Dispatch workflow as Version A. Adds a Tracking Dashboard showing all dispatched orders for the day. When print mode is active, Trackit and Deliveries are not notified — the Tracking Dashboard provides a record of what has been dispatched and printed. Note: live GPS and automatic status updates depend on the same network and will not be available.
             </Text>
           </Stack>
         )}
@@ -376,7 +361,7 @@ export default function App() {
           </Row>
           <Text size="small" tone="secondary">
             {companyOn
-              ? "Print ticket mode is on. Ticket & Print replaces Ticket Truck — existing delivery ticket prints at the plant printer and queues for sync."
+              ? "Print ticket mode is on — kill switch active. Ticket & Print replaces Ticket Truck. Trackit and Deliveries are not notified. Printed ticket is the only record."
               : "Digital mode. Ticket Truck sends the ticket to Trackit and the driver in Deliveries."}
           </Text>
         </Stack>
@@ -391,10 +376,9 @@ export default function App() {
 
         {/* ── Stats ── */}
         <Row gap={20} wrap>
-          <Stat value={readyOrders.length}   label="Ready to dispatch"        tone={readyOrders.length > 0 ? "warning" : undefined} />
-          <Stat value={orders.filter(o => o.status === "dispatched").length} label="Dispatched digitally"    tone="success" />
-          <Stat value={pendingSync.length}   label="Printed — pending sync"   tone={pendingSync.length > 0 ? "danger" : undefined} />
-          <Stat value={syncedOffline.length} label="Offline tickets synced" />
+          <Stat value={readyOrders.length}                                         label="Ready to dispatch"    tone={readyOrders.length > 0 ? "warning" : undefined} />
+          <Stat value={orders.filter(o => o.status === "dispatched").length}       label="Dispatched digitally" tone="success" />
+          <Stat value={printedToday.length}                                         label="Printed (print only)" tone={printedToday.length > 0 ? "danger" : undefined} />
         </Row>
 
         {/* ── Tabs ── */}
@@ -416,8 +400,8 @@ export default function App() {
               </Callout>
             )}
             {companyOn && (
-              <Callout tone="warning" title="Print ticket mode active — Ticket & Print is live">
-                The Ticket Truck button has changed to Ticket &amp; Print. Clicking it prints the existing delivery ticket at the plant and queues data for Trackit and Deliveries sync.
+              <Callout tone="danger" title="Print ticket mode active — kill switch on">
+                The Ticket Truck button has changed to Ticket &amp; Print. Trackit and Deliveries will NOT be notified. The printed ticket is the only record for each dispatched truck.
               </Callout>
             )}
 
@@ -476,8 +460,7 @@ export default function App() {
                             <Text size="small" weight="semibold" tone="secondary">{order.orderNo}</Text>
                             <Text size="small" tone="tertiary">Ticket #{order.ticketNo}</Text>
                             {order.status === "dispatched" && <Pill size="sm" active>Ticketed digitally · {order.actionTime}</Pill>}
-                            {order.status === "printed"    && <Pill size="sm">Printed · {order.actionTime} — pending sync</Pill>}
-                            {order.status === "synced"     && <Pill size="sm" active>Printed &amp; synced</Pill>}
+                            {order.status === "printed"    && <Pill size="sm">Printed (print only) · {order.actionTime}</Pill>}
                           </Row>
                           <Text size="small" tone="tertiary">{order.customer} · {order.product} · {order.volume} m3 · {order.vehicle}</Text>
                         </Stack>
@@ -498,28 +481,15 @@ export default function App() {
           <Stack gap={14}>
             <Stack gap={4}>
               <H2>Tracking Dashboard</H2>
-              <Text size="small" tone="secondary">
-                Dispatched orders for Southpark Ready Mix.
-              </Text>
+              <Text size="small" tone="secondary">Dispatched orders for Southpark Ready Mix.</Text>
             </Stack>
 
-            {/* Key design consideration: live data is unavailable during the outage */}
             {companyOn && (
-              <Callout tone="danger" title="Network outage — live truck data not available">
-                GPS location, automatic status updates (arrival, departure, delivery confirmation) and driver app data all depend on the same network connection. This screen is showing dispatch records only — scheduled deliveries based on what was entered in Dispatch. Truck positions and on-site status will not update until the network is restored.
+              <Callout tone="danger" title="Print ticket mode — kill switch active">
+                Trackit and Deliveries have not been notified for any printed tickets. This screen shows dispatch records only — what was entered at the point of ticketing. Live GPS, truck locations, and automatic status updates are also unavailable as they depend on the same network.
               </Callout>
             )}
 
-            {pendingSync.length > 0 && (
-              <Callout tone="warning" title={`${pendingSync.length} printed ticket${pendingSync.length > 1 ? "s" : ""} queued — ready to sync when network restores`}>
-                Tickets were printed at the plant. Drivers have their physical copies. Use Sync Now as soon as the network is restored.
-              </Callout>
-            )}
-            {syncedOffline.length > 0 && pendingSync.length === 0 && (
-              <Callout tone="success" title="All printed tickets synced">
-                Trackit and Deliveries have been updated. Turn off print ticket mode in Company Config to return to digital tickets.
-              </Callout>
-            )}
             {activeDeliveries.length === 0 && (
               <Callout tone="neutral" title="No dispatched orders">No trucks have been dispatched yet today. Go to Dispatch to ticket trucks.</Callout>
             )}
@@ -528,13 +498,12 @@ export default function App() {
               <Stack gap={6}>
                 <Text size="small" weight="semibold" tone="secondary" style={{ textTransform:"uppercase" as const, letterSpacing:"0.05em", fontSize:11 }}>
                   {companyOn
-                    ? "Dispatched orders — scheduled delivery (dispatch record only, no live tracking)"
+                    ? "Dispatched orders — print only (Trackit & Deliveries not notified)"
                     : "Dispatched orders — live tracking active"}
                 </Text>
                 <Stack gap={4}>
                   {activeDeliveries.map(order => {
                     const isPrinted = order.status === "printed";
-                    const isSynced  = order.status === "synced";
                     const isDigital = order.status === "dispatched";
                     return (
                       <div key={order.id} style={{ border:`1px solid ${isPrinted ? theme.stroke.secondary : theme.stroke.tertiary}`, borderRadius:8, padding:"14px 16px", background:isPrinted ? theme.bg.elevated : theme.fill.tertiary }}>
@@ -547,12 +516,10 @@ export default function App() {
                               <Text weight="semibold">{order.vehicle}</Text>
                               <Text size="small" tone="secondary">{order.driver}</Text>
                               {isDigital && !companyOn && <Pill size="sm" active>Digital ticket · {order.actionTime}</Pill>}
-                              {isDigital && companyOn  && <Pill size="sm">Digital ticket · {order.actionTime} · no live status</Pill>}
-                              {isPrinted && <Pill size="sm">Printed ticket · pending sync · {order.actionTime}</Pill>}
-                              {isSynced  && <Pill size="sm" active>Printed &amp; synced · {order.actionTime}</Pill>}
+                              {isDigital &&  companyOn && <Pill size="sm">Digital ticket · {order.actionTime}</Pill>}
+                              {isPrinted && <Pill size="sm">Printed (print only) · {order.actionTime}</Pill>}
                             </Row>
                             <Text size="small" tone="secondary">{order.orderNo} · {order.customer}</Text>
-                            {/* "En route" replaced with "Scheduled delivery" during outage — live position is unknown */}
                             <Text size="small" tone="tertiary">
                               {order.product} · {order.volume} m3 ·{" "}
                               {companyOn
@@ -570,36 +537,30 @@ export default function App() {
                 </Stack>
               </Stack>
             )}
-
-            {pendingSync.length > 0 && (
-              <Row justify="end">
-                <Button variant="primary" disabled={syncing} onClick={handleSyncAll}>
-                  {syncing ? "Syncing..." : `Sync ${pendingSync.length} ticket${pendingSync.length > 1 ? "s" : ""} to Trackit & Deliveries`}
-                </Button>
-              </Row>
-            )}
           </Stack>
         )}
 
-        {/* ── PENDING SYNC (Version A only) ── */}
-        {tab === "sync" && ver === "A" && (
+        {/* ── PRINTED TODAY (Version A only) ── */}
+        {tab === "printed" && ver === "A" && (
           <Stack gap={14}>
             <Stack gap={4}>
-              <H2>Pending Sync</H2>
-              <Text size="small" tone="secondary">Printed tickets queued for Trackit and Deliveries. Click Sync Now when the network is restored.</Text>
+              <H2>Printed Today</H2>
+              <Text size="small" tone="secondary">A record of tickets printed today. Trackit and Deliveries were not notified for these orders — the printed ticket is the only record.</Text>
             </Stack>
 
-            {pendingSync.length === 0 && syncedOffline.length === 0 && (
-              <Callout tone="success" title="Nothing pending">No printed tickets are waiting to sync.</Callout>
+            {printedToday.length === 0 && (
+              <Callout tone="neutral" title="No printed tickets yet today">
+                Tickets printed via Ticket &amp; Print will appear here.
+              </Callout>
             )}
 
-            {pendingSync.length > 0 && (
+            {printedToday.length > 0 && (
               <Stack gap={8}>
-                <Callout tone="warning" title={`${pendingSync.length} ticket${pendingSync.length > 1 ? "s" : ""} queued — waiting for network`}>
-                  Tickets were printed at the plant during the outage. Drivers have their physical copies.
+                <Callout tone="danger" title={`${printedToday.length} ticket${printedToday.length > 1 ? "s" : ""} printed — Trackit & Deliveries not notified`}>
+                  These orders were dispatched in print mode. The printed tickets held by the drivers are the only records. Turn off Print Ticket Mode in Company Config to restore digital dispatch.
                 </Callout>
                 <Stack gap={4}>
-                  {pendingSync.map(order => (
+                  {printedToday.map(order => (
                     <div key={order.id} style={{ border:`1px solid ${theme.stroke.secondary}`, borderRadius:8, padding:"14px 16px", background:theme.bg.elevated }}>
                       <Row align="center" gap={12}>
                         <Stack gap={3} style={{ flex:1, minWidth:0 }}>
@@ -612,35 +573,6 @@ export default function App() {
                           <Text size="small" tone="tertiary">{order.product} · {order.volume} m3 · {order.vehicle} · {order.driver}</Text>
                         </Stack>
                         <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>
-                      </Row>
-                    </div>
-                  ))}
-                </Stack>
-                <Row justify="end">
-                  <Button variant="primary" disabled={syncing} onClick={handleSyncAll}>
-                    {syncing ? "Syncing..." : `Sync ${pendingSync.length} ticket${pendingSync.length > 1 ? "s" : ""} to Trackit & Deliveries`}
-                  </Button>
-                </Row>
-              </Stack>
-            )}
-
-            {syncedOffline.length > 0 && (
-              <Stack gap={6}>
-                <Text size="small" weight="semibold" tone="secondary" style={{ textTransform:"uppercase" as const, letterSpacing:"0.05em", fontSize:11 }}>
-                  Synced this session
-                </Text>
-                <Stack gap={3}>
-                  {syncedOffline.map(order => (
-                    <div key={order.id} style={{ border:`1px solid ${theme.stroke.tertiary}`, borderRadius:8, padding:"12px 16px", background:theme.fill.tertiary }}>
-                      <Row align="center" gap={12}>
-                        <Stack gap={2} style={{ flex:1, minWidth:0 }}>
-                          <Row gap={10} align="center" wrap>
-                            <Text size="small" weight="semibold" tone="secondary">{order.orderNo}</Text>
-                            <Text size="small" tone="tertiary">Ticket #{order.ticketNo}</Text>
-                            <Pill size="sm" active>Synced to Trackit &amp; Deliveries</Pill>
-                          </Row>
-                          <Text size="small" tone="tertiary">{order.customer} · {order.product} · {order.volume} m3 · {order.driver}</Text>
-                        </Stack>
                       </Row>
                     </div>
                   ))}
@@ -659,7 +591,6 @@ export default function App() {
             </Stack>
             <Divider />
 
-            {/* Main toggle */}
             <Card>
               <CardBody>
                 <Stack gap={12}>
@@ -675,29 +606,28 @@ export default function App() {
                   </Row>
                   <Divider />
                   <Text size="small" tone="secondary">
-                    Switches all plants from digital to printed tickets in one go — irrespective of individual internet or telephone coverage. In Dispatch, the Ticket Truck button becomes Ticket &amp; Print. The existing delivery ticket prints at the plant printer with all order data pre-filled. Driver writes arrival time, departure, slump etc. in the blank fields already on the standard ticket. All data queues for Trackit and Deliveries sync.
+                    Acts as a kill switch to Trackit and Deliveries. When on, all plants switch to printed tickets — Trackit and Deliveries are not notified for any dispatched order. The existing delivery ticket prints at the plant printer with all order data pre-filled. Driver writes arrival time, departure, slump etc. in the blank fields on the standard ticket. The printed ticket is the only record until Print Ticket Mode is turned off.
                   </Text>
                   {companyOn ? (
-                    <Callout tone="warning" title="Print ticket mode is ON — all plants">
-                      Go to Dispatch to use Ticket &amp; Print. When the network is restored, sync printed tickets then turn this off to return to digital.
+                    <Callout tone="danger" title="Print ticket mode is ON — Trackit &amp; Deliveries kill switch active">
+                      All plants are in print mode. Trackit and Deliveries will not receive any ticket data until this toggle is turned off. Go to Dispatch to use Ticket &amp; Print.
                     </Callout>
                   ) : (
                     <Callout tone="neutral" title="Digital ticket mode — normal operation">
-                      Flip the toggle to switch all plants to printed tickets during a network outage.
+                      Flip the toggle to switch all plants to printed tickets and stop sending data to Trackit and Deliveries.
                     </Callout>
                   )}
                 </Stack>
               </CardBody>
             </Card>
 
-            {/* Printer configuration (Q5 — default printer per plant) */}
             <Card>
               <CardBody>
                 <Stack gap={10}>
                   <Stack gap={2}>
                     <Text weight="semibold">Default Printer — Southpark Ready Mix</Text>
                     <Text size="small" tone="secondary">
-                      Tickets print to this printer when Ticket &amp; Print is used. Configured per plant — matches how printers are managed in CS today.
+                      Tickets print to this printer when Ticket &amp; Print is used. Configured per plant. This printer setup is shared by both print features — see sequencing note below.
                     </Text>
                   </Stack>
                   <Row gap={12} align="center">
@@ -708,7 +638,7 @@ export default function App() {
                   </Row>
                   {printer === "none" && (
                     <Callout tone="danger" title="No printer configured">
-                      Select a printer before enabling print ticket mode. Ticket &amp; Print cannot proceed without a configured printer.
+                      Select a printer before enabling print ticket mode.
                     </Callout>
                   )}
                   {printer !== "none" && (
@@ -720,8 +650,7 @@ export default function App() {
               </CardBody>
             </Card>
 
-            {/* Next steps when enabled */}
-            {/* Feature dependency / sequencing note — always visible */}
+            {/* Feature sequencing / dependency note — always visible */}
             <Card collapsible defaultOpen>
               <CardHeader>Feature sequencing — related print capabilities</CardHeader>
               <CardBody>
@@ -731,7 +660,6 @@ export default function App() {
                   </Text>
 
                   <Stack gap={8}>
-                    {/* Feature 1 */}
                     <div style={{ borderLeft:`3px solid ${theme.accent.primary}`, paddingLeft:12 }}>
                       <Stack gap={4}>
                         <Row gap={8} align="center">
@@ -739,18 +667,17 @@ export default function App() {
                           <Text size="small" weight="semibold">Offline Print Fallback</Text>
                         </Row>
                         <Text size="small" tone="secondary">
-                          Network outage emergency mode. Admin flips a company-wide toggle — all plants switch from digital to printed tickets immediately. Dispatcher uses Ticket &amp; Print in Dispatch. Data queues for Trackit and Deliveries sync on reconnect.
+                          Network outage emergency mode. Admin flips a company-wide toggle — all plants switch from digital to printed tickets immediately. Acts as a kill switch to Trackit and Deliveries. The printed ticket is the only record while the toggle is on.
                         </Text>
                         <Row gap={6} wrap>
                           <Pill size="sm">Company-wide toggle</Pill>
                           <Pill size="sm">Emergency / temporary</Pill>
                           <Pill size="sm">Replaces digital ticketing</Pill>
-                          <Pill size="sm">Sync on reconnect</Pill>
+                          <Pill size="sm">Kill switch — Trackit &amp; Deliveries bypassed</Pill>
                         </Row>
                       </Stack>
                     </div>
 
-                    {/* Feature 2 */}
                     <div style={{ borderLeft:`3px solid ${theme.stroke.secondary}`, paddingLeft:12 }}>
                       <Stack gap={4}>
                         <Row gap={8} align="center">
@@ -758,13 +685,13 @@ export default function App() {
                           <Text size="small" weight="semibold">Contract Fulfilment Print</Text>
                         </Row>
                         <Text size="small" tone="secondary">
-                          Some customers require a physical printed ticket as a contractual obligation — regardless of network availability. This is a routine, planned capability configured per customer or order type. The ticket prints alongside the digital send (not instead of it) as part of the standard dispatch flow.
+                          Some customers require a physical printed ticket as a contractual obligation — regardless of network availability. This is a routine, planned capability configured per customer or order type. The ticket prints alongside the digital send (not instead of it) — Trackit and Deliveries are still notified.
                         </Text>
                         <Row gap={6} wrap>
                           <Pill size="sm">Per-customer / per-order flag</Pill>
                           <Pill size="sm">Routine / always-on for flagged customers</Pill>
                           <Pill size="sm">Runs alongside digital ticketing</Pill>
-                          <Pill size="sm">No sync step needed</Pill>
+                          <Pill size="sm">Trackit &amp; Deliveries still notified</Pill>
                         </Row>
                       </Stack>
                     </div>
@@ -773,7 +700,7 @@ export default function App() {
                   <Divider />
 
                   <Stack gap={4}>
-                    <Text size="small" weight="semibold">Shared infrastructure (built once in Feature 1)</Text>
+                    <Text size="small" weight="semibold">Shared infrastructure — built once in Feature 1, reused in Feature 2</Text>
                     <Stack gap={3}>
                       {[
                         "Default printer configuration per plant (this screen)",
@@ -787,7 +714,7 @@ export default function App() {
                       ))}
                     </Stack>
                     <Text size="small" tone="tertiary" style={{ marginTop:4 }}>
-                      Feature 2 inherits all of the above. When scoping Contract Fulfilment Print, printer setup, the print trigger in Dispatch, and the ticket format are already built and validated — the additional work is the per-customer/order flag and the logic to print alongside the digital send.
+                      When scoping Feature 2, note that printer setup, the print trigger in Dispatch, and the ticket format are already built and validated. The additional work is the per-customer/order flag and the logic to print alongside (not instead of) the digital send.
                     </Text>
                   </Stack>
                 </Stack>
@@ -804,7 +731,7 @@ export default function App() {
                     <Row align="center" gap={16}>
                       <Stack gap={2} style={{ flex:1 }}>
                         <Text size="small" weight="semibold">Dispatch</Text>
-                        <Text size="small" tone="secondary">Use Ticket &amp; Print to ticket trucks and print delivery tickets at the plant.</Text>
+                        <Text size="small" tone="secondary">Use Ticket &amp; Print to ticket trucks. Trackit and Deliveries will not be notified.</Text>
                       </Stack>
                       <Button variant="secondary" onClick={() => setTab("dispatch")}>Go to Dispatch</Button>
                     </Row>
@@ -816,7 +743,7 @@ export default function App() {
                       <Row align="center" gap={16}>
                         <Stack gap={2} style={{ flex:1 }}>
                           <Text size="small" weight="semibold">Tracking Dashboard</Text>
-                          <Text size="small" tone="secondary">Dispatch records only during outage. Use to manage sync when the network is restored.</Text>
+                          <Text size="small" tone="secondary">View a record of today's dispatched orders. No live tracking during outage.</Text>
                         </Stack>
                         <Button variant="secondary" onClick={() => setTab("tracking")}>Go to Tracking</Button>
                       </Row>
@@ -826,7 +753,6 @@ export default function App() {
               </Stack>
             )}
 
-            {/* How it works */}
             <Card collapsible defaultOpen={false}>
               <CardHeader>How this works — Version {ver}</CardHeader>
               <CardBody>
@@ -834,7 +760,7 @@ export default function App() {
                   <Stack gap={3}>
                     <Text size="small" weight="semibold">What admin does (one action)</Text>
                     <Text size="small" tone="secondary">
-                      Flip Print Ticket Mode on in Company Config. All plants switch immediately — irrespective of individual internet or phone coverage. No per-plant configuration needed.
+                      Flip Print Ticket Mode on in Company Config. All plants switch immediately — irrespective of individual internet or phone coverage. This acts as a kill switch to Trackit and Deliveries.
                     </Text>
                   </Stack>
                   <Divider />
@@ -846,30 +772,32 @@ export default function App() {
                   </Stack>
                   <Divider />
                   <Stack gap={3}>
-                    <Text size="small" weight="semibold">What prints</Text>
+                    <Text size="small" weight="semibold">What prints — and what doesn't get sent</Text>
                     <Text size="small" tone="secondary">
-                      The existing standard delivery ticket. All order data pre-fills automatically (customer, product, volume, vehicle, driver etc.). Blank ruled lines for arrival time, departure, slump, and signatures are already part of the standard form — driver fills them in by hand at site, exactly as with traditional paper dockets.
+                      The existing standard delivery ticket prints at the plant. All order data pre-fills automatically. Blank ruled lines for arrival time, departure, slump, and signatures are already part of the standard form. Trackit and Deliveries receive nothing — the printed ticket is the only record.
                     </Text>
                   </Stack>
-                  {ver === "B" && (
-                    <>
-                      <Divider />
-                      <Stack gap={3}>
-                        <Text size="small" weight="semibold">Tracking Dashboard — important limitation</Text>
-                        <Text size="small" tone="secondary">
-                          During a network outage, the Tracking Dashboard shows dispatch records only — scheduled deliveries from what was entered in Dispatch. Live GPS, truck locations, and automatic delivery status updates (arrival, departure, confirmation) all depend on the same network connection and will not be available. The dashboard's primary value during an outage is identifying which tickets are printed and pending sync. Its full tracking capability returns when the network is restored.
-                        </Text>
-                      </Stack>
-                    </>
+                  <Divider />
+                  {ver === "B" ? (
+                    <Stack gap={3}>
+                      <Text size="small" weight="semibold">Tracking Dashboard during outage</Text>
+                      <Text size="small" tone="secondary">
+                        Shows dispatch records only — what was entered at the point of ticketing. Live GPS, truck locations, and automatic delivery status updates depend on the same network and will not be available. Trackit and Deliveries are also not notified — the dashboard is a local view of today's dispatches only.
+                      </Text>
+                    </Stack>
+                  ) : (
+                    <Stack gap={3}>
+                      <Text size="small" weight="semibold">Printed Today tab</Text>
+                      <Text size="small" tone="secondary">
+                        Shows all tickets printed today with a record of the order details. Trackit and Deliveries were not notified for any of these orders. Use Reprint to produce a duplicate if a ticket is lost.
+                      </Text>
+                    </Stack>
                   )}
                   <Divider />
                   <Stack gap={3}>
-                    <Text size="small" weight="semibold">Sync on reconnect</Text>
+                    <Text size="small" weight="semibold">Returning to normal</Text>
                     <Text size="small" tone="secondary">
-                      {ver === "A"
-                        ? "When the network is restored, go to Pending Sync and click Sync Now."
-                        : "When the network is restored, go to Tracking Dashboard and click Sync Now."}
-                      {" "}All queued tickets reconcile with Trackit and Deliveries. Admin then turns Print Ticket Mode off in Company Config to return to digital.
+                      When the network is restored, turn Print Ticket Mode off in Company Config. Ticket Truck returns and all subsequent orders are sent to Trackit and Deliveries as normal. Orders dispatched while print mode was active remain as print-only records.
                     </Text>
                   </Stack>
                 </Stack>

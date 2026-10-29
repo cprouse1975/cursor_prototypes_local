@@ -10,7 +10,7 @@ import {
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type Ver = "A" | "B";
-type OrderStatus = "ready" | "dispatched" | "printed";
+type OrderStatus = "ready" | "dispatched" | "printed" | "delivered_manual";
 
 interface DispatchOrder {
   id: string; orderNo: string; ticketNo: string;
@@ -282,10 +282,15 @@ export default function App() {
     if (!digitalTarget) return;
     setOrders(os => os.map(o => o.id === digitalTarget.id ? { ...o, status:"dispatched" as const, actionTime:nowStr() } : o));
   }
+  function handleMarkDelivered(id: string) {
+    setOrders(os => os.map(o => o.id === id ? { ...o, status:"delivered_manual" as const } : o));
+  }
 
   const readyOrders      = orders.filter(o => o.status === "ready");
   const completedToday   = orders.filter(o => o.status !== "ready");
-  const printedToday     = orders.filter(o => o.status === "printed");
+  const printedInTransit = orders.filter(o => o.status === "printed");
+  const deliveredManual  = orders.filter(o => o.status === "delivered_manual");
+  const printedToday     = orders.filter(o => o.status === "printed" || o.status === "delivered_manual");
   const activeDeliveries = orders.filter(o => o.status !== "ready");
 
   const TAB_A = [
@@ -378,7 +383,8 @@ export default function App() {
         <Row gap={20} wrap>
           <Stat value={readyOrders.length}                                         label="Ready to dispatch"    tone={readyOrders.length > 0 ? "warning" : undefined} />
           <Stat value={orders.filter(o => o.status === "dispatched").length}       label="Dispatched digitally" tone="success" />
-          <Stat value={printedToday.length}                                         label="Printed (print only)" tone={printedToday.length > 0 ? "danger" : undefined} />
+          <Stat value={printedInTransit.length}                                    label="Printed — in transit" tone={printedInTransit.length > 0 ? "danger" : undefined} />
+          <Stat value={deliveredManual.length}                                     label="Delivered (manual)"   tone={deliveredManual.length > 0 ? "success" : undefined} />
         </Row>
 
         {/* ── Tabs ── */}
@@ -459,8 +465,9 @@ export default function App() {
                           <Row gap={10} align="center" wrap>
                             <Text size="small" weight="semibold" tone="secondary">{order.orderNo}</Text>
                             <Text size="small" tone="tertiary">Ticket #{order.ticketNo}</Text>
-                            {order.status === "dispatched" && <Pill size="sm" active>Ticketed digitally · {order.actionTime}</Pill>}
-                            {order.status === "printed"    && <Pill size="sm">Printed (print only) · {order.actionTime}</Pill>}
+                            {order.status === "dispatched"       && <Pill size="sm" active>Ticketed digitally · {order.actionTime}</Pill>}
+                            {order.status === "printed"          && <Pill size="sm">Printed — in transit · {order.actionTime}</Pill>}
+                            {order.status === "delivered_manual" && <Pill size="sm" active>Delivered (manual)</Pill>}
                           </Row>
                           <Text size="small" tone="tertiary">{order.customer} · {order.product} · {order.volume} m3 · {order.vehicle}</Text>
                         </Stack>
@@ -503,10 +510,11 @@ export default function App() {
                 </Text>
                 <Stack gap={4}>
                   {activeDeliveries.map(order => {
-                    const isPrinted = order.status === "printed";
-                    const isDigital = order.status === "dispatched";
+                    const isPrinted   = order.status === "printed";
+                    const isDelivered = order.status === "delivered_manual";
+                    const isDigital   = order.status === "dispatched";
                     return (
-                      <div key={order.id} style={{ border:`1px solid ${isPrinted ? theme.stroke.secondary : theme.stroke.tertiary}`, borderRadius:8, padding:"14px 16px", background:isPrinted ? theme.bg.elevated : theme.fill.tertiary }}>
+                      <div key={order.id} style={{ border:`1px solid ${isPrinted ? theme.stroke.secondary : theme.stroke.tertiary}`, borderRadius:8, padding:"14px 16px", background:isDelivered ? theme.fill.tertiary : isPrinted ? theme.bg.elevated : theme.fill.tertiary }}>
                         <Row align="center" gap={12}>
                           <div style={{ width:38, height:38, borderRadius:8, background:theme.fill.secondary, border:`1px solid ${theme.stroke.tertiary}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
@@ -515,9 +523,10 @@ export default function App() {
                             <Row gap={8} align="center" wrap>
                               <Text weight="semibold">{order.vehicle}</Text>
                               <Text size="small" tone="secondary">{order.driver}</Text>
-                              {isDigital && !companyOn && <Pill size="sm" active>Digital ticket · {order.actionTime}</Pill>}
-                              {isDigital &&  companyOn && <Pill size="sm">Digital ticket · {order.actionTime}</Pill>}
-                              {isPrinted && <Pill size="sm">Printed (print only) · {order.actionTime}</Pill>}
+                              {isDigital   && !companyOn && <Pill size="sm" active>Digital ticket · {order.actionTime}</Pill>}
+                              {isDigital   &&  companyOn && <Pill size="sm">Digital ticket · {order.actionTime}</Pill>}
+                              {isPrinted   && <Pill size="sm">Printed — in transit · {order.actionTime}</Pill>}
+                              {isDelivered && <Pill size="sm" active>Delivered (manual)</Pill>}
                             </Row>
                             <Text size="small" tone="secondary">{order.orderNo} · {order.customer}</Text>
                             <Text size="small" tone="tertiary">
@@ -527,9 +536,10 @@ export default function App() {
                                 : `En route to ${order.deliveryAddress}`}
                             </Text>
                           </Stack>
-                          {isPrinted && (
-                            <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>
-                          )}
+                          <Row gap={6}>
+                            {isPrinted && <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>}
+                            {isPrinted && <Button variant="secondary" onClick={() => handleMarkDelivered(order.id)}>Mark Delivered</Button>}
+                          </Row>
                         </Row>
                       </div>
                     );
@@ -556,26 +566,36 @@ export default function App() {
 
             {printedToday.length > 0 && (
               <Stack gap={8}>
-                <Callout tone="danger" title={`${printedToday.length} ticket${printedToday.length > 1 ? "s" : ""} printed — Trackit & Deliveries not notified`}>
-                  These orders were dispatched in print mode. The printed tickets held by the drivers are the only records. Turn off Print Ticket Mode in Company Config to restore digital dispatch.
+                <Callout tone="danger" title={`${printedInTransit.length} in transit · ${deliveredManual.length} delivered (manual) — Trackit & Deliveries not notified`}>
+                  These orders were dispatched in print mode. The printed tickets held by the drivers are the only records. Mark an order as Delivered once the truck returns or the customer confirms. Turn off Print Ticket Mode in Company Config to restore digital dispatch.
                 </Callout>
                 <Stack gap={4}>
-                  {printedToday.map(order => (
-                    <div key={order.id} style={{ border:`1px solid ${theme.stroke.secondary}`, borderRadius:8, padding:"14px 16px", background:theme.bg.elevated }}>
-                      <Row align="center" gap={12}>
-                        <Stack gap={3} style={{ flex:1, minWidth:0 }}>
-                          <Row gap={10} align="center" wrap>
-                            <Text weight="semibold">{order.orderNo}</Text>
-                            <Text size="small" tone="secondary">Ticket #{order.ticketNo}</Text>
-                            <Pill size="sm">Printed {order.actionTime}</Pill>
+                  {printedToday.map(order => {
+                    const isDelivered = order.status === "delivered_manual";
+                    return (
+                      <div key={order.id} style={{ border:`1px solid ${isDelivered ? theme.stroke.tertiary : theme.stroke.secondary}`, borderRadius:8, padding:"14px 16px", background:isDelivered ? theme.fill.tertiary : theme.bg.elevated }}>
+                        <Row align="center" gap={12}>
+                          <Stack gap={3} style={{ flex:1, minWidth:0 }}>
+                            <Row gap={10} align="center" wrap>
+                              <Text weight="semibold">{order.orderNo}</Text>
+                              <Text size="small" tone="secondary">Ticket #{order.ticketNo}</Text>
+                              {isDelivered
+                                ? <Pill size="sm" active>Delivered (manual)</Pill>
+                                : <Pill size="sm">Printed — in transit · {order.actionTime}</Pill>}
+                            </Row>
+                            <Text size="small" tone="secondary">{order.customer} · {order.deliveryAddress}</Text>
+                            <Text size="small" tone="tertiary">{order.product} · {order.volume} m3 · {order.vehicle} · {order.driver}</Text>
+                          </Stack>
+                          <Row gap={6}>
+                            <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>
+                            {!isDelivered && (
+                              <Button variant="secondary" onClick={() => handleMarkDelivered(order.id)}>Mark Delivered</Button>
+                            )}
                           </Row>
-                          <Text size="small" tone="secondary">{order.customer} · {order.deliveryAddress}</Text>
-                          <Text size="small" tone="tertiary">{order.product} · {order.volume} m3 · {order.vehicle} · {order.driver}</Text>
-                        </Stack>
-                        <Button variant="ghost" onClick={() => setPrintTarget(order)}>Reprint</Button>
-                      </Row>
-                    </div>
-                  ))}
+                        </Row>
+                      </div>
+                    );
+                  })}
                 </Stack>
               </Stack>
             )}

@@ -228,13 +228,12 @@
       ];
     }
 
+    // Timed fields — simple ruled lines (Waiting Time added; Site Additions promoted to table below)
     const STD_BLANKS = [
       { label:"Actual Arrival Time",    tall:false },
       { label:"Actual Departure Time",  tall:false },
+      { label:"Waiting Time (mins)",    tall:false },
       { label:"Slump at Delivery (mm)", tall:false },
-      { label:"Site Additions",         tall:false },
-      { label:"Customer Signature",     tall:true  },
-      { label:"Driver Signature",       tall:true  },
     ];
 
     // ── Standard Delivery Ticket ───────────────────────────────────────────
@@ -264,11 +263,55 @@
             </Stack>
           </div>
           <div style={{ padding:"10px 14px", borderTop:`1px solid ${theme.stroke.tertiary}`, background:theme.bg.elevated }}>
-            <Stack gap={6}>
+            <Stack gap={8}>
+              {/* Timed fields */}
               {STD_BLANKS.map(f => (
                 <Row key={f.label} justify="space-between" align="center">
                   <Text size="small" tone="secondary" style={{ minWidth:160, flexShrink:0 }}>{f.label}</Text>
-                  <div style={{ flex:1, marginLeft:10, borderBottom:`1px solid ${theme.stroke.secondary}`, height:f.tall ? 26 : 14 }} />
+                  <div style={{ flex:1, marginLeft:10, borderBottom:`1px solid ${theme.stroke.secondary}`, height:14 }} />
+                </Row>
+              ))}
+              {/* Site Additions — 3-row table */}
+              <div>
+                <Text size="small" tone="secondary" style={{ display:'block', marginBottom:4 }}>Site Additions</Text>
+                <div style={{ border:`1px solid ${theme.stroke.secondary}`, borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ display:'flex', background:theme.fill.secondary, borderBottom:`1px solid ${theme.stroke.tertiary}`, padding:'2px 4px' }}>
+                    <span style={{ flex:4, color:theme.text.tertiary, fontSize:9 }}>Product / Material</span>
+                    <span style={{ flex:2, color:theme.text.tertiary, fontSize:9, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:4 }}>Quantity</span>
+                    <span style={{ flex:2, color:theme.text.tertiary, fontSize:9, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:4 }}>Unit</span>
+                  </div>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{ display:'flex', height:16, borderBottom: i<2 ? `1px solid ${theme.stroke.tertiary}` : 'none' }}>
+                      <div style={{ flex:4, borderRight:`1px solid ${theme.stroke.tertiary}` }} />
+                      <div style={{ flex:2, borderRight:`1px solid ${theme.stroke.tertiary}` }} />
+                      <div style={{ flex:2 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Additional Charges — 3-row table */}
+              <div>
+                <Text size="small" tone="secondary" style={{ display:'block', marginBottom:4 }}>Additional Charges</Text>
+                <div style={{ border:`1px solid ${theme.stroke.secondary}`, borderRadius:3, overflow:'hidden' }}>
+                  <div style={{ display:'flex', background:theme.fill.secondary, borderBottom:`1px solid ${theme.stroke.tertiary}`, padding:'2px 4px' }}>
+                    <span style={{ flex:4, color:theme.text.tertiary, fontSize:9 }}>Charge Type</span>
+                    <span style={{ flex:2, color:theme.text.tertiary, fontSize:9, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:4 }}>Rate</span>
+                    <span style={{ flex:2, color:theme.text.tertiary, fontSize:9, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:4 }}>Amount</span>
+                  </div>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{ display:'flex', height:16, borderBottom: i<2 ? `1px solid ${theme.stroke.tertiary}` : 'none' }}>
+                      <div style={{ flex:4, borderRight:`1px solid ${theme.stroke.tertiary}` }} />
+                      <div style={{ flex:2, borderRight:`1px solid ${theme.stroke.tertiary}` }} />
+                      <div style={{ flex:2 }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Signatures */}
+              {["Customer Signature", "Driver Signature"].map(label => (
+                <Row key={label} justify="space-between" align="center">
+                  <Text size="small" tone="secondary" style={{ minWidth:160, flexShrink:0 }}>{label}</Text>
+                  <div style={{ flex:1, marginLeft:10, borderBottom:`1px solid ${theme.stroke.secondary}`, height:26 }} />
                 </Row>
               ))}
             </Stack>
@@ -402,6 +445,315 @@
       );
     }
 
+    // ── Proof of Delivery form ─────────────────────────────────────────────
+
+    const POD_EMPTY = () => ({
+      ticketLookup:'', foundOrder:null,
+      arrivalTime:'', departureTime:'', waitingTime:'', slump:'',
+      additions:[ {product:'',qty:'',unit:''}, {product:'',qty:'',unit:''}, {product:'',qty:'',unit:''} ],
+      charges:  [ {type:'',rate:'',amount:''}, {type:'',rate:'',amount:''}, {type:'',rate:'',amount:''} ],
+      custSigNoted:false, driverSigNoted:false,
+      paperTicketNote:'', saved:false,
+    });
+
+    function PodForm({ orders, savedPods, setSavedPods, podForm, setPodForm }) {
+      const inputS    = { width:'100%', padding:'6px 10px', borderRadius:5, border:`1px solid ${theme.stroke.secondary}`, fontSize:13, color:theme.text.primary, background:theme.bg.elevated, boxSizing:'border-box', fontFamily:'inherit' };
+      const readOnlyS = { ...inputS, background:theme.fill.secondary, color:theme.text.secondary };
+      const labelS    = { fontSize:12, color:theme.text.secondary, marginBottom:3, display:'block' };
+
+      function handleLookup() {
+        const q = podForm?.ticketLookup?.trim?.() ?? '';
+        const found = orders?.find?.(o => o?.status !== 'ready' && o?.ticketNo === q);
+        setPodForm(f => ({ ...f, foundOrder: found ?? null }));
+      }
+      function handleSave() {
+        const savedAt = new Date()?.toLocaleTimeString?.('en-AU', { hour:'2-digit', minute:'2-digit' });
+        const pod = { ...podForm, savedAt };
+        setSavedPods?.(ps => [...(ps ?? [])?.filter?.(p => p?.foundOrder?.id !== pod?.foundOrder?.id), pod]);
+        setPodForm(f => ({ ...f, saved:true }));
+      }
+      function handleNew() { setPodForm(POD_EMPTY()); }
+      function setAddRow(i, key, val) {
+        setPodForm(f => ({ ...f, additions: f?.additions?.map?.((r,j) => j===i ? {...r, [key]:val} : r) }));
+      }
+      function setChargeRow(i, key, val) {
+        setPodForm(f => ({ ...f, charges: f?.charges?.map?.((r,j) => j===i ? {...r, [key]:val} : r) }));
+      }
+
+      // ── Saved confirmation view ──
+      if (podForm?.saved) {
+        return (
+          <Stack gap={16}>
+            <div style={{ padding:28, background:'#f0fdf4', border:'1px solid #4ade80', borderRadius:8, display:'flex', flexDirection:'column', alignItems:'center', gap:12, textAlign:'center' }}>
+              <div style={{ width:48, height:48, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width={22} height={22} viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#15803d" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </div>
+              <Text weight="semibold">Reconciliation saved — Ticket #{podForm?.foundOrder?.ticketNo}</Text>
+              <Text size="small" tone="secondary">{podForm?.foundOrder?.customer} · {podForm?.foundOrder?.orderNo}</Text>
+            </div>
+            <Row gap={8} align="center">
+              <Button variant="secondary" onClick={handleNew}>Reconcile another ticket</Button>
+              {(savedPods?.length ?? 0) > 0 && <Text size="small" tone="secondary">{savedPods?.length} reconciliation{(savedPods?.length??0)>1?'s':''} saved this session</Text>}
+            </Row>
+            {(savedPods?.length ?? 0) > 0 && (
+              <Stack gap={4}>
+                <Text size="small" weight="semibold" tone="secondary" style={{ textTransform:'uppercase', letterSpacing:'0.05em', fontSize:11 }}>Saved reconciliations</Text>
+                <Stack gap={3}>
+                  {savedPods?.map?.((p,i) => (
+                    <div key={i} style={{ border:`1px solid ${theme.stroke.tertiary}`, borderRadius:8, padding:'10px 14px', background:theme.fill.tertiary }}>
+                      <Row align="center" justify="space-between">
+                        <Stack gap={1}>
+                          <Text size="small" weight="semibold">Ticket #{p?.foundOrder?.ticketNo} · {p?.foundOrder?.orderNo}</Text>
+                          <Text size="small" tone="secondary">{p?.foundOrder?.customer} — saved {p?.savedAt}</Text>
+                        </Stack>
+                        <Pill size="sm" active>Reconciled</Pill>
+                      </Row>
+                    </div>
+                  ))}
+                </Stack>
+              </Stack>
+            )}
+          </Stack>
+        );
+      }
+
+      return (
+        <Stack gap={16}>
+
+          {/* Ticket lookup */}
+          <Card>
+            <CardBody>
+              <Stack gap={10}>
+                <Stack gap={2}>
+                  <Text weight="semibold">Look up ticket</Text>
+                  <Text size="small" tone="secondary">Type the ticket number from the printed delivery ticket. Only dispatched, printed, or delivered tickets can be reconciled.</Text>
+                </Stack>
+                <Row gap={8} align="center">
+                  <div style={{ flex:1 }}>
+                    <input style={inputS} placeholder="e.g. 002097" value={podForm?.ticketLookup ?? ''} onChange={e => setPodForm(f => ({ ...f, ticketLookup:e?.target?.value, foundOrder:null }))} onKeyDown={e => e?.key === 'Enter' && handleLookup()} />
+                  </div>
+                  <Button variant="primary" onClick={handleLookup}>Find Ticket</Button>
+                </Row>
+                {(podForm?.ticketLookup?.length ?? 0) > 0 && !podForm?.foundOrder && (
+                  <Callout tone="warning" title="Ticket not found">
+                    No dispatched ticket matching that number was found. Dispatch an order first, then look it up here. Pre-dispatched demo tickets: 002097, 002098.
+                  </Callout>
+                )}
+              </Stack>
+            </CardBody>
+          </Card>
+
+          {podForm?.foundOrder && (
+            <Stack gap={14}>
+
+              {/* Read-only order details */}
+              <Card>
+                <CardHeader>Order details — read only</CardHeader>
+                <CardBody>
+                  <Stack gap={10}>
+                    <Row gap={12} wrap>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Ticket No</span>
+                        <input readOnly style={readOnlyS} value={`#${podForm?.foundOrder?.ticketNo}`} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Order No</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.orderNo ?? ''} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Status in system</span>
+                        <input readOnly style={readOnlyS} value={
+                          podForm?.foundOrder?.status === 'dispatched'       ? 'Dispatched digitally' :
+                          podForm?.foundOrder?.status === 'printed'          ? 'Printed — in transit' :
+                          podForm?.foundOrder?.status === 'delivered_manual' ? 'Delivered (manual)'   :
+                          podForm?.foundOrder?.status ?? ''
+                        } />
+                      </Stack>
+                    </Row>
+                    <Divider />
+                    <Row gap={12} wrap>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Batch Plant</span>
+                        <input readOnly style={readOnlyS} value="Southpark Ready Mix" />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Date</span>
+                        <input readOnly style={readOnlyS} value={new Date()?.toLocaleDateString?.('en-AU')} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Scheduled Delivery</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.scheduledTime ?? ''} />
+                      </Stack>
+                    </Row>
+                    <Row gap={12} wrap>
+                      <Stack gap={2} style={{ flex:2, minWidth:200 }}>
+                        <span style={labelS}>Customer</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.customer ?? ''} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:3, minWidth:200 }}>
+                        <span style={labelS}>Delivery Address</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.deliveryAddress ?? ''} />
+                      </Stack>
+                    </Row>
+                    <Row gap={12} wrap>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Job Reference</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.jobRef ?? ''} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:2, minWidth:200 }}>
+                        <span style={labelS}>Product / Mix</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.product ?? ''} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:1, minWidth:120 }}>
+                        <span style={labelS}>Volume (m³)</span>
+                        <input readOnly style={readOnlyS} value={`${podForm?.foundOrder?.volume ?? ''} m³`} />
+                      </Stack>
+                    </Row>
+                    <Row gap={12} wrap>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Vehicle</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.vehicle ?? ''} />
+                      </Stack>
+                      <Stack gap={2} style={{ flex:1, minWidth:170 }}>
+                        <span style={labelS}>Driver</span>
+                        <input readOnly style={readOnlyS} value={podForm?.foundOrder?.driver ?? ''} />
+                      </Stack>
+                    </Row>
+                  </Stack>
+                </CardBody>
+              </Card>
+
+              {/* Delivery times */}
+              <Card>
+                <CardHeader>Delivery times</CardHeader>
+                <CardBody>
+                  <Row gap={12} wrap>
+                    <Stack gap={2} style={{ flex:1, minWidth:150 }}>
+                      <span style={labelS}>Actual Arrival Time</span>
+                      <input style={inputS} placeholder="e.g. 11:14" value={podForm?.arrivalTime ?? ''} onChange={e => setPodForm(f => ({...f, arrivalTime:e?.target?.value}))} />
+                    </Stack>
+                    <Stack gap={2} style={{ flex:1, minWidth:150 }}>
+                      <span style={labelS}>Actual Departure Time</span>
+                      <input style={inputS} placeholder="e.g. 11:52" value={podForm?.departureTime ?? ''} onChange={e => setPodForm(f => ({...f, departureTime:e?.target?.value}))} />
+                    </Stack>
+                    <Stack gap={2} style={{ flex:1, minWidth:150 }}>
+                      <span style={labelS}>Waiting Time (mins)</span>
+                      <input style={inputS} placeholder="e.g. 20" value={podForm?.waitingTime ?? ''} onChange={e => setPodForm(f => ({...f, waitingTime:e?.target?.value}))} />
+                    </Stack>
+                    <Stack gap={2} style={{ flex:1, minWidth:150 }}>
+                      <span style={labelS}>Slump at Delivery (mm)</span>
+                      <input style={inputS} placeholder="e.g. 100" value={podForm?.slump ?? ''} onChange={e => setPodForm(f => ({...f, slump:e?.target?.value}))} />
+                    </Stack>
+                  </Row>
+                </CardBody>
+              </Card>
+
+              {/* Site additions table */}
+              <Card>
+                <CardHeader>Site additions</CardHeader>
+                <CardBody>
+                  <Stack gap={8}>
+                    <Text size="small" tone="secondary">Products or materials added at the site — as written on the printed ticket.</Text>
+                    <div style={{ border:`1px solid ${theme.stroke.secondary}`, borderRadius:5, overflow:'hidden' }}>
+                      <div style={{ display:'flex', background:theme.fill.secondary, borderBottom:`1px solid ${theme.stroke.secondary}`, padding:'5px 8px', gap:8 }}>
+                        <span style={{ flex:5, fontSize:11, color:theme.text.secondary, fontWeight:600 }}>Product / Material</span>
+                        <span style={{ flex:2, fontSize:11, color:theme.text.secondary, fontWeight:600, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:8 }}>Quantity</span>
+                        <span style={{ flex:2, fontSize:11, color:theme.text.secondary, fontWeight:600, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:8 }}>Unit</span>
+                      </div>
+                      {podForm?.additions?.map?.((row, i) => (
+                        <div key={i} style={{ display:'flex', borderBottom: i<2 ? `1px solid ${theme.stroke.tertiary}` : 'none', background:theme.bg.elevated }}>
+                          <input style={{ flex:5, border:'none', outline:'none', padding:'6px 8px', fontSize:13, color:theme.text.primary, background:'transparent', fontFamily:'inherit' }} placeholder="—" value={row?.product ?? ''} onChange={e => setAddRow(i,'product',e?.target?.value)} />
+                          <input style={{ flex:2, border:'none', borderLeft:`1px solid ${theme.stroke.tertiary}`, outline:'none', padding:'6px 8px', fontSize:13, color:theme.text.primary, background:'transparent', fontFamily:'inherit' }} placeholder="—" value={row?.qty ?? ''} onChange={e => setAddRow(i,'qty',e?.target?.value)} />
+                          <input style={{ flex:2, border:'none', borderLeft:`1px solid ${theme.stroke.tertiary}`, outline:'none', padding:'6px 8px', fontSize:13, color:theme.text.primary, background:'transparent', fontFamily:'inherit' }} placeholder="—" value={row?.unit ?? ''} onChange={e => setAddRow(i,'unit',e?.target?.value)} />
+                        </div>
+                      ))}
+                    </div>
+                  </Stack>
+                </CardBody>
+              </Card>
+
+              {/* Additional charges table */}
+              <Card>
+                <CardHeader>Additional charges</CardHeader>
+                <CardBody>
+                  <Stack gap={8}>
+                    <Text size="small" tone="secondary">Waiting time charges, pumping, or other surcharges to reconcile against the paper ticket.</Text>
+                    <div style={{ border:`1px solid ${theme.stroke.secondary}`, borderRadius:5, overflow:'hidden' }}>
+                      <div style={{ display:'flex', background:theme.fill.secondary, borderBottom:`1px solid ${theme.stroke.secondary}`, padding:'5px 8px', gap:8 }}>
+                        <span style={{ flex:5, fontSize:11, color:theme.text.secondary, fontWeight:600 }}>Charge Type</span>
+                        <span style={{ flex:3, fontSize:11, color:theme.text.secondary, fontWeight:600, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:8 }}>Rate</span>
+                        <span style={{ flex:3, fontSize:11, color:theme.text.secondary, fontWeight:600, borderLeft:`1px solid ${theme.stroke.tertiary}`, paddingLeft:8 }}>Amount</span>
+                      </div>
+                      {podForm?.charges?.map?.((row, i) => (
+                        <div key={i} style={{ display:'flex', borderBottom: i<2 ? `1px solid ${theme.stroke.tertiary}` : 'none', background:theme.bg.elevated }}>
+                          <input style={{ flex:5, border:'none', outline:'none', padding:'6px 8px', fontSize:13, color:theme.text.primary, background:'transparent', fontFamily:'inherit' }} placeholder="—" value={row?.type ?? ''} onChange={e => setChargeRow(i,'type',e?.target?.value)} />
+                          <input style={{ flex:3, border:'none', borderLeft:`1px solid ${theme.stroke.tertiary}`, outline:'none', padding:'6px 8px', fontSize:13, color:theme.text.primary, background:'transparent', fontFamily:'inherit' }} placeholder="—" value={row?.rate ?? ''} onChange={e => setChargeRow(i,'rate',e?.target?.value)} />
+                          <input style={{ flex:3, border:'none', borderLeft:`1px solid ${theme.stroke.tertiary}`, outline:'none', padding:'6px 8px', fontSize:13, color:theme.text.primary, background:'transparent', fontFamily:'inherit' }} placeholder="—" value={row?.amount ?? ''} onChange={e => setChargeRow(i,'amount',e?.target?.value)} />
+                        </div>
+                      ))}
+                    </div>
+                  </Stack>
+                </CardBody>
+              </Card>
+
+              {/* Signatures & paper ticket note */}
+              <Card>
+                <CardHeader>Signatures &amp; paper ticket</CardHeader>
+                <CardBody>
+                  <Stack gap={12}>
+                    <Row gap={20} wrap>
+                      <Row gap={8} align="center">
+                        <input type="checkbox" id="podCustSig" checked={podForm?.custSigNoted ?? false} onChange={e => setPodForm(f => ({...f, custSigNoted:e?.target?.checked}))} style={{ width:16, height:16, cursor:'pointer', flexShrink:0 }} />
+                        <label htmlFor="podCustSig" style={{ fontSize:13, color:theme.text.primary, cursor:'pointer' }}>Customer signature captured on paper ticket</label>
+                      </Row>
+                      <Row gap={8} align="center">
+                        <input type="checkbox" id="podDrvSig" checked={podForm?.driverSigNoted ?? false} onChange={e => setPodForm(f => ({...f, driverSigNoted:e?.target?.checked}))} style={{ width:16, height:16, cursor:'pointer', flexShrink:0 }} />
+                        <label htmlFor="podDrvSig" style={{ fontSize:13, color:theme.text.primary, cursor:'pointer' }}>Driver signature captured on paper ticket</label>
+                      </Row>
+                    </Row>
+                    <Divider />
+                    <Stack gap={4}>
+                      <span style={labelS}>Paper ticket reference / photo note</span>
+                      <Text size="small" tone="secondary">Note where the paper ticket is filed, or describe how it was photographed. Do not upload the photo here.</Text>
+                      <input style={{ ...inputS, marginTop:4 }} placeholder="e.g. Photo taken and filed in job folder JOB-2026-0891 — office cabinet B3" value={podForm?.paperTicketNote ?? ''} onChange={e => setPodForm(f => ({...f, paperTicketNote:e?.target?.value}))} />
+                    </Stack>
+                  </Stack>
+                </CardBody>
+              </Card>
+
+              {/* Save / clear */}
+              <Row gap={8} justify="end">
+                <Button variant="ghost" onClick={handleNew}>Clear</Button>
+                <Button variant="primary" onClick={handleSave}>Save reconciliation</Button>
+              </Row>
+
+            </Stack>
+          )}
+
+          {/* Saved list when no active lookup */}
+          {!podForm?.foundOrder && (savedPods?.length ?? 0) > 0 && (
+            <Stack gap={4}>
+              <Text size="small" weight="semibold" tone="secondary" style={{ textTransform:'uppercase', letterSpacing:'0.05em', fontSize:11 }}>Saved reconciliations this session</Text>
+              <Stack gap={3}>
+                {savedPods?.map?.((p,i) => (
+                  <div key={i} style={{ border:`1px solid ${theme.stroke.tertiary}`, borderRadius:8, padding:'10px 14px', background:theme.fill.tertiary }}>
+                    <Row align="center" justify="space-between">
+                      <Stack gap={1}>
+                        <Text size="small" weight="semibold">Ticket #{p?.foundOrder?.ticketNo} · {p?.foundOrder?.orderNo}</Text>
+                        <Text size="small" tone="secondary">{p?.foundOrder?.customer} — saved {p?.savedAt}</Text>
+                      </Stack>
+                      <Pill size="sm" active>Reconciled</Pill>
+                    </Row>
+                  </div>
+                ))}
+              </Stack>
+            </Stack>
+          )}
+
+        </Stack>
+      );
+    }
+
     // ── App ────────────────────────────────────────────────────────────────
 
     function App() {
@@ -420,6 +772,8 @@
       const [printTarget,   setPrintTarget]   = useState(null);
       const [digitalTarget, setDigitalTarget] = useState(null);
       const [actioningId,   setActioningId]   = useState(null);
+      const [savedPods,     setSavedPods]     = useState([]);
+      const [podForm,       setPodForm]       = useState(POD_EMPTY());
 
       const companyOn  = ver === "A" ? compA    : compB;
       const orders     = ver === "A" ? ordA     : ordB;
@@ -463,13 +817,15 @@
       const activeDeliveries = orders.filter(o => o.status !== "ready");
 
       const TAB_A = [
-        { value:"dispatch", label:"Dispatch"       },
-        { value:"printed",  label:"Printed Today"  },
-        { value:"config",   label:"Company Config" },
+        { value:"dispatch", label:"Dispatch"          },
+        { value:"printed",  label:"Printed Today"     },
+        { value:"pod",      label:"Proof of Delivery" },
+        { value:"config",   label:"Company Config"    },
       ];
       const TAB_B = [
         { value:"dispatch",  label:"Dispatch"           },
         { value:"tracking",  label:"Tracking Dashboard" },
+        { value:"pod",       label:"Proof of Delivery"  },
         { value:"config",    label:"Company Config"     },
       ];
       const tabOpts = ver === "A" ? TAB_A : TAB_B;
@@ -477,6 +833,7 @@
       function tabLabel(t) {
         if (t.value === "printed"  && printedToday.length > 0) return `Printed Today (${printedToday.length})`;
         if (t.value === "tracking" && printedToday.length > 0) return `Tracking Dashboard (${printedToday.length})`;
+        if (t.value === "pod"      && savedPods.length > 0)    return `Proof of Delivery (${savedPods.length})`;
         return t.label;
       }
 
@@ -763,6 +1120,27 @@
                     </Stack>
                   </Stack>
                 )}
+              </Stack>
+            )}
+
+            {/* ── PROOF OF DELIVERY ── */}
+            {tab === "pod" && (
+              <Stack gap={14}>
+                <Stack gap={4}>
+                  <H2>Proof of Delivery — Reconciliation</H2>
+                  <Text size="small" tone="secondary">Look up a printed delivery ticket by ticket number and record the delivery details from the paper ticket. All order fields pre-fill from the system record.</Text>
+                </Stack>
+                {!companyOn && (
+                  <Callout tone="neutral" title="Digital ticket mode — reconciliation available">
+                    This form can reconcile any dispatched order. Switch to print ticket mode in Company Config to use the full printed-ticket fallback workflow.
+                  </Callout>
+                )}
+                {companyOn && (
+                  <Callout tone="danger" title="Print ticket mode active — reconcile from paper tickets">
+                    Look up each printed ticket by number and enter the delivery details the driver recorded on the paper ticket. The paper ticket is the only record.
+                  </Callout>
+                )}
+                <PodForm orders={orders} savedPods={savedPods} setSavedPods={setSavedPods} podForm={podForm} setPodForm={setPodForm} />
               </Stack>
             )}
 
